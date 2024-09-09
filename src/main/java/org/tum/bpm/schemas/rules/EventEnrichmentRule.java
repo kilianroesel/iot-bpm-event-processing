@@ -6,20 +6,22 @@ import org.apache.flink.cdc.connectors.shaded.com.fasterxml.jackson.annotation.J
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.EqualsAndHashCode;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper=true)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({"id", "name", "field", "equipmentId"})
-public class EventEnrichmentRule {
-    @JsonProperty("id")
-    private String id;
-    @JsonProperty("name")
-    private String name;
+@JsonPropertyOrder({"statusName", "field", "equipmentId"})
+public class EventEnrichmentRule extends Rule {
+    @JsonProperty("statusName")
+    private String statusName;
     @JsonProperty("field")
     private String field;
     @JsonProperty("equipmentId")
     private String equipmentId;
+
+    public EventEnrichmentRule() {
+        super();
+    }
 }

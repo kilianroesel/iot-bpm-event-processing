@@ -14,7 +14,7 @@ import org.tum.bpm.schemas.measurements.IoTMessageSchema;
 public class MeasurementKafkaSource {
 
     private static final String TOPIC = "eh-bpm-event-processing-prod";
-    private static final String FILE_PATH = "src/main/resources/consumer.config";
+    private static final String FILE_PATH = "src/main/resources/kafka.config";
 
     public static KafkaSource<IoTMessageSchema> createMeasurementSource() throws IOException {
         Properties properties = new Properties();

@@ -6,32 +6,34 @@ import org.apache.flink.cdc.connectors.shaded.com.fasterxml.jackson.annotation.J
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import lombok.EqualsAndHashCode;
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({"id", "name", "field", "triggerCategory", "triggerType", "value", "from", "to", "equipmentId", "scopeId"})
-public class EventAbstractionRule {
-    @JsonProperty("id")
-    private String id;
-    @JsonProperty("name")
-    private String name;
+@EqualsAndHashCode(callSuper=true)
+@JsonPropertyOrder({"__t", "eventName", "field", "triggerCategory", "triggerType", "value", "equipmentId", "control", "scopeId", "updatedAt", "createdAt"})
+public class EventAbstractionRule extends Rule {
+    @JsonProperty("eventName")
+    private String eventName;    
     @JsonProperty("field")
     private String field;
     @JsonProperty("triggerCategory")
     private String triggerCategory;
     @JsonProperty("triggerType")
     private String triggerType;
+
     @JsonProperty("value")
     private Double value;
     @JsonProperty("from")
     private Double from;
     @JsonProperty("to")
     private Double to;
-    @JsonProperty("equipmentId")
-    private String equipmentId;
     @JsonProperty("scopeId")
     private String scopeId;
+    @JsonProperty("equipmentId")
+    private String equipmentId;
+
+    public EventAbstractionRule() {
+        super();
+    }
 }

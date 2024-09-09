@@ -17,13 +17,12 @@ import java.util.List;
 import java.util.ArrayList;
 
 import org.tum.bpm.schemas.rules.EventAbstractionRule;
-import org.tum.bpm.schemas.rules.RuleControl;
 import org.tum.bpm.schemas.BaseEvent;
 import org.tum.bpm.schemas.Scoped;
 import org.tum.bpm.schemas.measurements.IoTMessageSchema;
 
 public class DynamicEventAbstractionFunction extends
-        KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, RuleControl<EventAbstractionRule>, BaseEvent<IoTMessageSchema>> {
+        KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, EventAbstractionRule, BaseEvent<IoTMessageSchema>> {
 
     private transient ValueState<IoTMessageSchema> lastMeasurementState;
 
@@ -47,7 +46,7 @@ public class DynamicEventAbstractionFunction extends
 
     @Override
     public void processElement(Scoped<IoTMessageSchema, String> measurement,
-            KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, RuleControl<EventAbstractionRule>, BaseEvent<IoTMessageSchema>>.ReadOnlyContext ctx,
+            KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, EventAbstractionRule, BaseEvent<IoTMessageSchema>>.ReadOnlyContext ctx,
             Collector<BaseEvent<IoTMessageSchema>> out) throws Exception {
                 
         ReadOnlyBroadcastState<String, List<EventAbstractionRule>> abstractionRuleState = ctx
@@ -67,30 +66,30 @@ public class DynamicEventAbstractionFunction extends
     }
 
     @Override
-    public void processBroadcastElement(RuleControl<EventAbstractionRule> controlRule,
-            KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, RuleControl<EventAbstractionRule>, BaseEvent<IoTMessageSchema>>.Context ctx,
+    public void processBroadcastElement(EventAbstractionRule rule,
+            KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, EventAbstractionRule, BaseEvent<IoTMessageSchema>>.Context ctx,
             Collector<BaseEvent<IoTMessageSchema>> out) throws Exception {
 
         BroadcastState<String, List<EventAbstractionRule>> broadcastState = ctx
                 .getBroadcastState(ABSTRACTION_RULES_BROADCAST_STATE_DESCRIPTOR);
         List<EventAbstractionRule> rules = broadcastState
-                .get(controlRule.getRule().getScopeId() + controlRule.getRule().getField());
+                .get(rule.getScopeId() + rule.getField());
 
         if (rules == null) {
             rules = new ArrayList<>();
         }
-        switch (controlRule.getControl()) {
+        switch (rule.getControl()) {
             case ACTIVE:
-                rules.removeIf(currentRule -> currentRule.getId().equals(controlRule.getRule().getId()));
-                rules.add(controlRule.getRule());
+                rules.removeIf(currentRule -> currentRule.getId().equals(rule.getId()));
+                rules.add(rule);
                 break;
             case INACTIVE:
-                rules.removeIf(currentRule -> currentRule.getId().equals(controlRule.getRule().getId()));
+                rules.removeIf(currentRule -> currentRule.getId().equals(rule.getId()));
                 break;
             default:
                 break;
         }
-        broadcastState.put(controlRule.getRule().getScopeId() + controlRule.getRule().getField(), rules);
+        broadcastState.put(rule.getEquipmentId() + rule.getField(), rules);
     }
 
     private boolean evaluateRule(EventAbstractionRule rule, IoTMessageSchema measurement,

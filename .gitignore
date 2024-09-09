@@ -1,3 +1,2 @@
 target
-consumer.config
-rules.config
+*.config

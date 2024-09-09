@@ -6,16 +6,14 @@ import org.apache.flink.cdc.connectors.shaded.com.fasterxml.jackson.annotation.J
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.EqualsAndHashCode;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper=true)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({"id", "machineName", "versionCsiStd", "versionCsiSpecific", "machineSoftwareVersion", "machineMasterSoftwareVersion"})
-public class EventScopingRule {
-    @JsonProperty("id")
-    private String id;
+@JsonPropertyOrder({"_id", "machineName", "versionCsiStd", "versionCsiSpecific", "machineSoftwareVersion", "machineMasterSoftwareVersion"})
+public class EventScopingRule extends Rule {
     @JsonProperty("machineName")
     private String machineName;
     @JsonProperty("versionCsiStd")
@@ -26,4 +24,8 @@ public class EventScopingRule {
     private String machineSoftwareVersion;
     @JsonProperty("machineMasterSoftwareVersion")
     private String machineMasterSoftwareVersion;
+
+    public EventScopingRule() {
+        super();
+    }
 }

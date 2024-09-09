@@ -1,0 +1,12 @@
+package org.tum.bpm.schemas.ocel;
+
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper=true)
+public class OcelNumberAttribute extends OcelAttribute {
+    private Double value;
+}

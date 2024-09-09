@@ -11,13 +11,12 @@ import org.apache.flink.util.Collector;
 import org.tum.bpm.schemas.Scoped;
 import org.tum.bpm.schemas.measurements.IoTMessageSchema;
 import org.tum.bpm.schemas.rules.EventScopingRule;
-import org.tum.bpm.schemas.rules.RuleControl;
-import org.tum.bpm.schemas.rules.RuleControl.Control;
+import org.tum.bpm.schemas.rules.Rule.Control;
 
 import java.util.Map;
 
 public class DynamicScopeFunction
-        extends BroadcastProcessFunction<IoTMessageSchema, RuleControl<EventScopingRule>, Scoped<IoTMessageSchema, String>> {
+        extends BroadcastProcessFunction<IoTMessageSchema, EventScopingRule, Scoped<IoTMessageSchema, String>> {
 
     // Broadcast state
     public static final MapStateDescriptor<String, EventScopingRule> SCOPE_RULES_BROADCAST_STATE_DESCRIPTOR = new MapStateDescriptor<String, EventScopingRule>(
@@ -28,7 +27,7 @@ public class DynamicScopeFunction
 
     @Override
     public void processElement(IoTMessageSchema measurement,
-            BroadcastProcessFunction<IoTMessageSchema, RuleControl<EventScopingRule>, Scoped<IoTMessageSchema, String>>.ReadOnlyContext ctx,
+            BroadcastProcessFunction<IoTMessageSchema, EventScopingRule, Scoped<IoTMessageSchema, String>>.ReadOnlyContext ctx,
             Collector<Scoped<IoTMessageSchema, String>> out) throws Exception {
 
         ReadOnlyBroadcastState<String, EventScopingRule> rulesState = ctx
@@ -50,8 +49,8 @@ public class DynamicScopeFunction
     }
 
     @Override
-    public void processBroadcastElement(RuleControl<EventScopingRule> controlRule,
-            BroadcastProcessFunction<IoTMessageSchema, RuleControl<EventScopingRule>, Scoped<IoTMessageSchema, String>>.Context ctx,
+    public void processBroadcastElement(EventScopingRule rule,
+            BroadcastProcessFunction<IoTMessageSchema, EventScopingRule, Scoped<IoTMessageSchema, String>>.Context ctx,
             Collector<Scoped<IoTMessageSchema, String>> out) throws Exception {
 
         BroadcastState<String, EventScopingRule> broadcastState = ctx
@@ -60,21 +59,22 @@ public class DynamicScopeFunction
         // Retrieve current rule key with given scopeId
         String ruleKey = null;
         for (Map.Entry<String, EventScopingRule> entry : broadcastState.entries()) {
-            if (entry.getValue().getId().equals(controlRule.getRule().getId())) {
+            if (entry.getValue().getId().equals(rule.getId())) {
                 ruleKey = entry.getKey();
             }
         }
-        if (controlRule.getControl().equals(Control.ACTIVE)) {
-            String scope = controlRule.getRule().getMachineName()
-                    + controlRule.getRule().getVersionCsiStd()
-                    + controlRule.getRule().getVersionCsiSpecific()
-                    + controlRule.getRule().getMachineSoftwareVersion()
-                    + controlRule.getRule().getMachineMasterSoftwareVersion();
-            broadcastState.put(scope, controlRule.getRule());
+        // Update broadcast rule state depending on rule control
+        if (rule.getControl().equals(Control.ACTIVE)) {
+            String scope = rule.getMachineName()
+                    + rule.getVersionCsiStd()
+                    + rule.getVersionCsiSpecific()
+                    + rule.getMachineSoftwareVersion()
+                    + rule.getMachineMasterSoftwareVersion();
+            broadcastState.put(scope, rule);
             if (ruleKey != null) {
                 broadcastState.remove(ruleKey);
             }
-        } else if (controlRule.getControl().equals(Control.INACTIVE)) {
+        } else if (rule.getControl().equals(Control.INACTIVE)) {
             if (ruleKey != null) {
                 broadcastState.remove(ruleKey);
             }

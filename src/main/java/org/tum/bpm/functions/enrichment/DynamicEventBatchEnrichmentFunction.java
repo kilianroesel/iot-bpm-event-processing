@@ -1,6 +1,9 @@
 package org.tum.bpm.functions.enrichment;
 
 import java.util.Map;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -16,12 +19,13 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.co.KeyedCoProcessFunction;
 import org.apache.flink.util.Collector;
 import org.tum.bpm.schemas.EquipmentListEvent;
+import org.tum.bpm.schemas.measurements.CSIMeasurement;
 import org.tum.bpm.schemas.measurements.IoTMessageSchema;
 import org.tum.bpm.schemas.AttributeEvent;
 
 public class DynamicEventBatchEnrichmentFunction
         extends
-        KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent<IoTMessageSchema>, AttributeEvent<IoTMessageSchema>> {
+        KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent<IoTMessageSchema>, AttributeEvent<String>> {
 
     private transient MapState<String, TreeSet<IoTMessageSchema>> measurementBuffer;
     private transient ListState<EquipmentListEvent<IoTMessageSchema>> eventBuffer;
@@ -45,8 +49,8 @@ public class DynamicEventBatchEnrichmentFunction
 
     @Override
     public void processElement1(IoTMessageSchema value,
-            KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent<IoTMessageSchema>, AttributeEvent<IoTMessageSchema>>.Context ctx,
-            Collector<AttributeEvent<IoTMessageSchema>> out) throws Exception {
+            KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent<IoTMessageSchema>, AttributeEvent<String>>.Context ctx,
+            Collector<AttributeEvent<String>> out) throws Exception {
 
         TreeSet<IoTMessageSchema> fieldBuffer = this.measurementBuffer.get(value.getPayload().getVarName());
         if (fieldBuffer == null)
@@ -57,42 +61,43 @@ public class DynamicEventBatchEnrichmentFunction
 
     @Override
     public void processElement2(EquipmentListEvent<IoTMessageSchema> value,
-            KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent<IoTMessageSchema>, AttributeEvent<IoTMessageSchema>>.Context ctx,
-            Collector<AttributeEvent<IoTMessageSchema>> out) throws Exception {
+            KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent<IoTMessageSchema>, AttributeEvent<String>>.Context ctx,
+            Collector<AttributeEvent<String>> out) throws Exception {
         this.eventBuffer.add(value);
         ctx.timerService().registerEventTimeTimer(ctx.timestamp());
     }
 
     @Override
     public void onTimer(long timestamp, OnTimerContext ctx,
-            Collector<AttributeEvent<IoTMessageSchema>> out)
+            Collector<AttributeEvent<String>> out)
             throws Exception {
 
-        // For each buffered event enrich the event with attributes according to the enrichment rules
+        // For each buffered event enrich the event with attributes according to the
+        // enrichment rules
         for (EquipmentListEvent<IoTMessageSchema> event : this.eventBuffer.get()) {
-            Map<String, IoTMessageSchema> enrichment = new HashMap<>();
-            for (String field: event.getStatusFields()) {
+            Map<String, String> enrichment = new HashMap<>();
+            for (String field : event.getStatusFields()) {
                 TreeSet<IoTMessageSchema> fieldBuffer = this.measurementBuffer.get(field);
-                // System.out.println("Wants to retreive Element in Buffer with VarName: " + field);
                 if (fieldBuffer != null) {
                     IoTMessageSchema mostRecentMeasurement = fieldBuffer.floor(event.getBaseEvent().getMessage());
-                    enrichment.put(field, mostRecentMeasurement); // Can be null
+                    enrichment.put(field, mostRecentMeasurement.getPayload().getTimestampUtc().toString()); // Can be null
                 }
             }
-            out.collect(new AttributeEvent<IoTMessageSchema>(UUID.randomUUID().toString(), event.getBaseEvent().getRule().getName(), enrichment));
+            out.collect(new AttributeEvent<String>(UUID.randomUUID().toString(),
+                    event.getBaseEvent().getRule().getEventName(), event.getBaseEvent().getMessage().getPayload().getTimestampUtc(), enrichment));
         }
         this.eventBuffer.clear();
 
-        // Clean old data from the measurementBuffer
         // TODO: don't clean the latest measurement
 
-        // ZonedDateTime waterMarkTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(ctx.timerService().currentWatermark()), ZoneId.of("UTC"));
-        // IoTMessageSchema dummyMeasurement = new IoTMessageSchema();
-        // dummyMeasurement.setPayload(new CSIMeasurement());
-        // dummyMeasurement.getPayload().setTimestampUtc(waterMarkTime);
-        // for (Map.Entry<String, TreeSet<IoTMessageSchema>> fieldBuffer : this.measurementBuffer.entries()) {
-        //     fieldBuffer.getValue().headSet(dummyMeasurement, false).clear();
-        //     this.measurementBuffer.put(fieldBuffer.getKey(), fieldBuffer.getValue());
-        // }
+        ZonedDateTime waterMarkTime = ZonedDateTime
+                .ofInstant(Instant.ofEpochMilli(ctx.timerService().currentWatermark()), ZoneId.of("UTC"));
+        IoTMessageSchema dummyMeasurement = new IoTMessageSchema();
+        dummyMeasurement.setPayload(new CSIMeasurement());
+        dummyMeasurement.getPayload().setTimestampUtc(waterMarkTime);
+        for (Map.Entry<String, TreeSet<IoTMessageSchema>> fieldBuffer : this.measurementBuffer.entries()) {
+            fieldBuffer.getValue().headSet(dummyMeasurement, false).clear();
+            this.measurementBuffer.put(fieldBuffer.getKey(), fieldBuffer.getValue());
+        }
     }
 }

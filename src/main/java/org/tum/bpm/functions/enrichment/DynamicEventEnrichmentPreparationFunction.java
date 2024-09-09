@@ -15,10 +15,9 @@ import org.tum.bpm.schemas.BaseEvent;
 import org.tum.bpm.schemas.EquipmentListEvent;
 import org.tum.bpm.schemas.measurements.IoTMessageSchema;
 import org.tum.bpm.schemas.rules.EventEnrichmentRule;
-import org.tum.bpm.schemas.rules.RuleControl;
 
 public class DynamicEventEnrichmentPreparationFunction extends
-        KeyedBroadcastProcessFunction<String, BaseEvent<IoTMessageSchema>, RuleControl<EventEnrichmentRule>, EquipmentListEvent<IoTMessageSchema>> {
+        KeyedBroadcastProcessFunction<String, BaseEvent<IoTMessageSchema>, EventEnrichmentRule, EquipmentListEvent<IoTMessageSchema>> {
 
     // Broadcast state
     public static final MapStateDescriptor<String, List<String>> ENRICHMENT_RULES_BROADCAST_STATE_DESCRIPTOR = new MapStateDescriptor<String, List<String>>(
@@ -29,7 +28,7 @@ public class DynamicEventEnrichmentPreparationFunction extends
 
     @Override
     public void processElement(BaseEvent<IoTMessageSchema> baseEvent,
-            KeyedBroadcastProcessFunction<String, BaseEvent<IoTMessageSchema>, RuleControl<EventEnrichmentRule>, EquipmentListEvent<IoTMessageSchema>>.ReadOnlyContext ctx,
+            KeyedBroadcastProcessFunction<String, BaseEvent<IoTMessageSchema>, EventEnrichmentRule, EquipmentListEvent<IoTMessageSchema>>.ReadOnlyContext ctx,
             Collector<EquipmentListEvent<IoTMessageSchema>> out) throws Exception {
         ReadOnlyBroadcastState<String, List<String>> enrichmentRuleState = ctx
                 .getBroadcastState(ENRICHMENT_RULES_BROADCAST_STATE_DESCRIPTOR);
@@ -41,29 +40,29 @@ public class DynamicEventEnrichmentPreparationFunction extends
     }
 
     @Override
-    public void processBroadcastElement(RuleControl<EventEnrichmentRule> controlRule,
-            KeyedBroadcastProcessFunction<String, BaseEvent<IoTMessageSchema>, RuleControl<EventEnrichmentRule>, EquipmentListEvent<IoTMessageSchema>>.Context ctx,
+    public void processBroadcastElement(EventEnrichmentRule rule,
+            KeyedBroadcastProcessFunction<String, BaseEvent<IoTMessageSchema>, EventEnrichmentRule, EquipmentListEvent<IoTMessageSchema>>.Context ctx,
             Collector<EquipmentListEvent<IoTMessageSchema>> out) throws Exception {
 
         BroadcastState<String, List<String>> broadcastState = ctx
                 .getBroadcastState(ENRICHMENT_RULES_BROADCAST_STATE_DESCRIPTOR);
-        List<String> rules = broadcastState.get(controlRule.getRule().getEquipmentId());
+        List<String> rules = broadcastState.get(rule.getEquipmentId());
 
         if (rules == null) {
             rules = new ArrayList<>();
         }
 
-        switch (controlRule.getControl()) {
+        switch (rule.getControl()) {
             case ACTIVE:
-                rules.removeIf(currentRule -> currentRule.equals(controlRule.getRule().getField()));
-                rules.add(controlRule.getRule().getField());
+                rules.removeIf(currentRule -> currentRule.equals(rule.getField()));
+                rules.add(rule.getField());
                 break;
             case INACTIVE:
-                rules.removeIf(currentRule -> currentRule.equals(controlRule.getRule().getField()));
+                rules.removeIf(currentRule -> currentRule.equals(rule.getField()));
                 break;
             default:
                 break;
         }
-        broadcastState.put(controlRule.getRule().getEquipmentId(), rules);
+        broadcastState.put(rule.getEquipmentId(), rules);
     }
 }
