@@ -38,17 +38,10 @@ public class EventProcessingPipeline {
                             MeasurementKafkaSource.createWatermarkStrategy(),
                             "Measurement Source");
 
-            DataStream<String> bootstrapRuleStream = env
-                    .fromSource(RulesSource.createRulesBootstrapSource(),
+            DataStream<String> ruleStream = env
+                    .fromSource(RulesSource.createRulesIncrementalSource(),
                             RulesSource.createWatermarkStrategy(), "Rule Bootstrap Source")
                     .setParallelism(1).process(new BootstrapRuleAlignmentFunction());
-
-            DataStream<String> changeRuleStream = env
-                    .fromSource(RulesSource.createRulesUpdateSource(),
-                            RulesSource.createWatermarkStrategy(), "Rule Update Source")
-                    .setParallelism(1);
-
-            DataStream<String> ruleStream = bootstrapRuleStream.union(changeRuleStream);
 
             SingleOutputStreamOperator<Rule> splitRuleStream = ruleStream
                     .process(new ChangeRuleDeserializationFunction());

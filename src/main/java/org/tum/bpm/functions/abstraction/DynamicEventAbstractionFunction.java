@@ -1,10 +1,9 @@
 package org.tum.bpm.functions.abstraction;
 
 import org.apache.flink.api.common.state.BroadcastState;
+import org.apache.flink.api.common.state.MapState;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.state.ReadOnlyBroadcastState;
-import org.apache.flink.api.common.state.ValueState;
-import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -24,11 +23,12 @@ import org.tum.bpm.schemas.measurements.IoTMessageSchema;
 public class DynamicEventAbstractionFunction extends
         KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, EventAbstractionRule, BaseEvent<IoTMessageSchema>> {
 
-    private transient ValueState<IoTMessageSchema> lastMeasurementState;
+    private transient MapState<String, IoTMessageSchema> lastMeasurementState;
 
     // Keyed state storing the last value of the encountered IoTMessageSchema
-    private final ValueStateDescriptor<IoTMessageSchema> LAST_MEASUREMENT_STATE_DESCRIPTOR = new ValueStateDescriptor<>(
+    private final MapStateDescriptor<String, IoTMessageSchema> LAST_MEASUREMENT_STATE_DESCRIPTOR = new MapStateDescriptor<>(
             "lastMeasurementStateDescriptor",
+            BasicTypeInfo.STRING_TYPE_INFO,
             TypeInformation.of(new TypeHint<IoTMessageSchema>() {
             }));
 
@@ -41,7 +41,7 @@ public class DynamicEventAbstractionFunction extends
 
     @Override
     public void open(Configuration parameters) {
-        this.lastMeasurementState = getRuntimeContext().getState(LAST_MEASUREMENT_STATE_DESCRIPTOR);
+        this.lastMeasurementState = getRuntimeContext().getMapState(LAST_MEASUREMENT_STATE_DESCRIPTOR);
     }
 
     @Override
@@ -51,7 +51,7 @@ public class DynamicEventAbstractionFunction extends
                 
         ReadOnlyBroadcastState<String, List<EventAbstractionRule>> abstractionRuleState = ctx
                 .getBroadcastState(ABSTRACTION_RULES_BROADCAST_STATE_DESCRIPTOR);
-        IoTMessageSchema lastValue = this.lastMeasurementState.value();
+        IoTMessageSchema lastValue = this.lastMeasurementState.get(measurement.getWrapped().getPayload().getVarName());
         if (lastValue != null) {
             List<EventAbstractionRule> rules = abstractionRuleState
                     .get(measurement.getScope() + measurement.getWrapped().getPayload().getVarName());
@@ -62,7 +62,7 @@ public class DynamicEventAbstractionFunction extends
                 }
             }
         }
-        this.lastMeasurementState.update(measurement.getWrapped());
+        this.lastMeasurementState.put(measurement.getWrapped().getPayload().getVarName(), measurement.getWrapped());
     }
 
     @Override
@@ -89,7 +89,7 @@ public class DynamicEventAbstractionFunction extends
             default:
                 break;
         }
-        broadcastState.put(rule.getEquipmentId() + rule.getField(), rules);
+        broadcastState.put(rule.getScopeId() + rule.getField(), rules);
     }
 
     private boolean evaluateRule(EventAbstractionRule rule, IoTMessageSchema measurement,
