@@ -1,6 +1,5 @@
 package org.tum.bpm.schemas.ocel;
 
-import java.time.ZonedDateTime;
 import java.util.List;
 
 import lombok.AllArgsConstructor;
@@ -10,10 +9,9 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class OcelEvent {
+public class OcelObject {
     private String id;
     private String type;
-    private ZonedDateTime time;
     private List<OcelAttribute> attributes;
     private List<OcelRelationship> relationships;
 }

@@ -33,7 +33,7 @@ public class MeasurementKafkaSource {
     public static WatermarkStrategy<IoTMessageSchema> createWatermarkStrategy() {
         WatermarkStrategy<IoTMessageSchema> watermarkStrategy = WatermarkStrategy
                 // Handle data that is max 20 seconds out of order
-                .<IoTMessageSchema>forBoundedOutOfOrderness(Duration.ofSeconds(10))
+                .<IoTMessageSchema>forBoundedOutOfOrderness(Duration.ofSeconds(5))
                 // Assign event Time Timestamps to each measurement
                 .withTimestampAssigner((measurement, timestamp) -> measurement.getPayload().getTimestampUtc().toInstant().toEpochMilli())
                 // If a source does not generate events for 60 seconds it is considered idle and the watermark progresses

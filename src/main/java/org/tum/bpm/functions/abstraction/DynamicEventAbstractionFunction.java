@@ -1,9 +1,10 @@
 package org.tum.bpm.functions.abstraction;
 
 import org.apache.flink.api.common.state.BroadcastState;
-import org.apache.flink.api.common.state.MapState;
 import org.apache.flink.api.common.state.MapStateDescriptor;
 import org.apache.flink.api.common.state.ReadOnlyBroadcastState;
+import org.apache.flink.api.common.state.ValueState;
+import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -16,19 +17,19 @@ import java.util.List;
 import java.util.ArrayList;
 
 import org.tum.bpm.schemas.rules.EventAbstractionRule;
+import org.tum.bpm.schemas.rules.RuleControl;
 import org.tum.bpm.schemas.BaseEvent;
 import org.tum.bpm.schemas.Scoped;
 import org.tum.bpm.schemas.measurements.IoTMessageSchema;
 
 public class DynamicEventAbstractionFunction extends
-        KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, EventAbstractionRule, BaseEvent<IoTMessageSchema>> {
+        KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, RuleControl<EventAbstractionRule>, BaseEvent> {
 
-    private transient MapState<String, IoTMessageSchema> lastMeasurementState;
+    private transient ValueState<IoTMessageSchema> lastMeasurementState;
 
     // Keyed state storing the last value of the encountered IoTMessageSchema
-    private final MapStateDescriptor<String, IoTMessageSchema> LAST_MEASUREMENT_STATE_DESCRIPTOR = new MapStateDescriptor<>(
+    private final ValueStateDescriptor<IoTMessageSchema> LAST_MEASUREMENT_STATE_DESCRIPTOR = new ValueStateDescriptor<>(
             "lastMeasurementStateDescriptor",
-            BasicTypeInfo.STRING_TYPE_INFO,
             TypeInformation.of(new TypeHint<IoTMessageSchema>() {
             }));
 
@@ -41,35 +42,36 @@ public class DynamicEventAbstractionFunction extends
 
     @Override
     public void open(Configuration parameters) {
-        this.lastMeasurementState = getRuntimeContext().getMapState(LAST_MEASUREMENT_STATE_DESCRIPTOR);
+        this.lastMeasurementState = getRuntimeContext().getState(LAST_MEASUREMENT_STATE_DESCRIPTOR);
     }
 
     @Override
     public void processElement(Scoped<IoTMessageSchema, String> measurement,
-            KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, EventAbstractionRule, BaseEvent<IoTMessageSchema>>.ReadOnlyContext ctx,
-            Collector<BaseEvent<IoTMessageSchema>> out) throws Exception {
-                
+            KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, RuleControl<EventAbstractionRule>, BaseEvent>.ReadOnlyContext ctx,
+            Collector<BaseEvent> out) throws Exception {
+
         ReadOnlyBroadcastState<String, List<EventAbstractionRule>> abstractionRuleState = ctx
                 .getBroadcastState(ABSTRACTION_RULES_BROADCAST_STATE_DESCRIPTOR);
-        IoTMessageSchema lastValue = this.lastMeasurementState.get(measurement.getWrapped().getPayload().getVarName());
+        IoTMessageSchema lastValue = this.lastMeasurementState.value();
         if (lastValue != null) {
             List<EventAbstractionRule> rules = abstractionRuleState
                     .get(measurement.getScope() + measurement.getWrapped().getPayload().getVarName());
             if (rules != null) {
                 for (EventAbstractionRule rule : rules) {
                     if (this.evaluateRule(rule, measurement.getWrapped(), lastValue))
-                        out.collect(new BaseEvent<IoTMessageSchema>(rule, measurement.getWrapped()));
+                        out.collect(new BaseEvent(rule, measurement.getWrapped()));
                 }
             }
         }
-        this.lastMeasurementState.put(measurement.getWrapped().getPayload().getVarName(), measurement.getWrapped());
+        this.lastMeasurementState.update(measurement.getWrapped());
     }
 
     @Override
-    public void processBroadcastElement(EventAbstractionRule rule,
-            KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, EventAbstractionRule, BaseEvent<IoTMessageSchema>>.Context ctx,
-            Collector<BaseEvent<IoTMessageSchema>> out) throws Exception {
+    public void processBroadcastElement(RuleControl<EventAbstractionRule> ruleControl,
+            KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, RuleControl<EventAbstractionRule>, BaseEvent>.Context ctx,
+            Collector<BaseEvent> out) throws Exception {
 
+        EventAbstractionRule rule = ruleControl.getRule();
         BroadcastState<String, List<EventAbstractionRule>> broadcastState = ctx
                 .getBroadcastState(ABSTRACTION_RULES_BROADCAST_STATE_DESCRIPTOR);
         List<EventAbstractionRule> rules = broadcastState
@@ -78,13 +80,13 @@ public class DynamicEventAbstractionFunction extends
         if (rules == null) {
             rules = new ArrayList<>();
         }
-        switch (rule.getControl()) {
+        switch (ruleControl.getControl()) {
             case ACTIVE:
-                rules.removeIf(currentRule -> currentRule.getId().equals(rule.getId()));
+                rules.removeIf(currentRule -> currentRule.getRuleId().equals(rule.getRuleId()));
                 rules.add(rule);
                 break;
             case INACTIVE:
-                rules.removeIf(currentRule -> currentRule.getId().equals(rule.getId()));
+                rules.removeIf(currentRule -> currentRule.getRuleId().equals(rule.getRuleId()));
                 break;
             default:
                 break;
@@ -99,6 +101,15 @@ public class DynamicEventAbstractionFunction extends
                 return rule.getValue() == Double.parseDouble(measurement.getPayload().getVarValue())
                         && Double.parseDouble(measurement.getPayload().getVarValue()) != Double
                                 .parseDouble(lastMeasurement.getPayload().getVarValue());
+            case "INCREASES_BY":
+                return Double.parseDouble(measurement.getPayload().getVarValue())
+                        - Double.parseDouble(lastMeasurement.getPayload().getVarValue()) >= rule.getValue();
+            case "DECREASES_BY":
+                return Double.parseDouble(measurement.getPayload().getVarValue())
+                        - Double.parseDouble(lastMeasurement.getPayload().getVarValue()) <= rule.getValue();
+            case "ABSOLUTE_CHANGE_IS_EQUAL":
+                return Math.abs(Double.parseDouble(measurement.getPayload().getVarValue())
+                        - Double.parseDouble(lastMeasurement.getPayload().getVarValue())) == rule.getValue();
             case "ABSOLUTE_CHANGE_IS_GREATER_EQUAL":
                 return Math.abs(Double.parseDouble(measurement.getPayload().getVarValue())
                         - Double.parseDouble(lastMeasurement.getPayload().getVarValue())) >= rule.getValue();

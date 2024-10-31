@@ -8,9 +8,9 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class BaseEvent<T extends IoTMessageSchema> {
+public class BaseEvent {
     // The rule that triggered the event
     private final EventAbstractionRule rule;
     // The underlying messsage that the event was evaluated on
-    private final T message;
+    private final IoTMessageSchema iotMessage;
 }

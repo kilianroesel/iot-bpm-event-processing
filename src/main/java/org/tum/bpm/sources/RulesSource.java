@@ -26,7 +26,10 @@ public class RulesSource {
                 .startupOptions(StartupOptions.initial())
                 .batchSize(8)
                 .databaseList("bpm_event_processing") // set captured database, support regex
-                .collectionList("bpm_event_processing.rules") // set captured collections, support regex
+                .collectionList("bpm_event_processing.event_abstraction_rules",
+                        "bpm_event_processing.event_enrichment_rules",
+                        "bpm_event_processing.event_scoping_rules",
+                        "bpm_event_processing.event_resource_correlation_rules") // set captured collections, support regex
                 .deserializer(new JsonDebeziumDeserializationSchema())
                 .build();
         return mongoSource;
@@ -36,8 +39,8 @@ public class RulesSource {
         WatermarkStrategy<String> watermarkStrategy = WatermarkStrategy
                 // Handle data that is max 20 seconds out of order
                 .<String>forBoundedOutOfOrderness(Duration.ofSeconds(1))
-                .withTimestampAssigner((event, timestamp) -> {System.out.println("hallo"); return Instant.now().toEpochMilli();});
-                // .withIdleness(Duration.ofSeconds(1));
+                .withTimestampAssigner((event, timestamp) -> Instant.now().toEpochMilli())
+                .withIdleness(Duration.ofSeconds(1));
         return watermarkStrategy;
     }
 }

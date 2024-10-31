@@ -2,6 +2,11 @@ package org.tum.bpm.jobs;
 
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.tum.bpm.functions.deserialization.MongoChangeStreamDeserialization;
+import org.tum.bpm.functions.deserialization.MongoDbChangeRuleDeserialization;
+import org.tum.bpm.schemas.debezium.MongoChangeStreamMessage;
+import org.tum.bpm.schemas.rules.Rule;
+import org.tum.bpm.schemas.rules.RuleControl;
 import org.tum.bpm.sources.RulesSource;
 
 public class TestPipeline {
@@ -12,10 +17,12 @@ public class TestPipeline {
         DataStream<String> bootstrapRuleStream = env
                 .fromSource(RulesSource.createRulesIncrementalSource(),
                 RulesSource.createWatermarkStrategy(), "Rule Update Source");
-
         
 
-        bootstrapRuleStream.print();
+        DataStream<MongoChangeStreamMessage> stream = bootstrapRuleStream.process(new MongoChangeStreamDeserialization());
+        DataStream<RuleControl<Rule>> ruleControlStream = stream.process(new MongoDbChangeRuleDeserialization());
+
+        ruleControlStream.print();
         env.execute("Testing flink consumer");
     }
 }

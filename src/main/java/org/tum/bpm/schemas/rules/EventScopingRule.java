@@ -12,7 +12,7 @@ import lombok.EqualsAndHashCode;
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper=true)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({"_id", "machineName", "versionCsiStd", "versionCsiSpecific", "machineSoftwareVersion", "machineMasterSoftwareVersion"})
+@JsonPropertyOrder({"id", "createdAt", "updatedAt", "machineName", "versionCsiStd", "versionCsiSpecific", "machineSoftwareVersion", "machineMasterSoftwareVersion"})
 public class EventScopingRule extends Rule {
     @JsonProperty("machineName")
     private String machineName;

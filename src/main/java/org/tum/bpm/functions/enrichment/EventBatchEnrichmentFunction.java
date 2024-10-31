@@ -4,9 +4,9 @@ import java.util.Map;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.TreeSet;
-import java.util.UUID;
 
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
@@ -21,14 +21,16 @@ import org.apache.flink.util.Collector;
 import org.tum.bpm.schemas.EquipmentListEvent;
 import org.tum.bpm.schemas.measurements.CSIMeasurement;
 import org.tum.bpm.schemas.measurements.IoTMessageSchema;
-import org.tum.bpm.schemas.AttributeEvent;
+import org.tum.bpm.schemas.ocel.OcelAttribute;
+import org.tum.bpm.schemas.rules.EventEnrichmentRule;
+import org.tum.bpm.schemas.EnrichedEvent;
 
-public class DynamicEventBatchEnrichmentFunction
+public class EventBatchEnrichmentFunction
         extends
-        KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent<IoTMessageSchema>, AttributeEvent<String>> {
+        KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent, EnrichedEvent> {
 
     private transient MapState<String, TreeSet<IoTMessageSchema>> measurementBuffer;
-    private transient ListState<EquipmentListEvent<IoTMessageSchema>> eventBuffer;
+    private transient ListState<EquipmentListEvent> eventBuffer;
 
     private MapStateDescriptor<String, TreeSet<IoTMessageSchema>> measurementBufferDescriptor = new MapStateDescriptor<>(
             "measurementBuffer",
@@ -36,9 +38,9 @@ public class DynamicEventBatchEnrichmentFunction
             TypeInformation.of(new TypeHint<TreeSet<IoTMessageSchema>>() {
             }));
 
-    private ListStateDescriptor<EquipmentListEvent<IoTMessageSchema>> eventBufferDescriptor = new ListStateDescriptor<>(
+    private ListStateDescriptor<EquipmentListEvent> eventBufferDescriptor = new ListStateDescriptor<>(
             "eventBuffer",
-            TypeInformation.of(new TypeHint<EquipmentListEvent<IoTMessageSchema>>() {
+            TypeInformation.of(new TypeHint<EquipmentListEvent>() {
             }));
 
     @Override
@@ -49,8 +51,8 @@ public class DynamicEventBatchEnrichmentFunction
 
     @Override
     public void processElement1(IoTMessageSchema value,
-            KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent<IoTMessageSchema>, AttributeEvent<String>>.Context ctx,
-            Collector<AttributeEvent<String>> out) throws Exception {
+            KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent, EnrichedEvent>.Context ctx,
+            Collector<EnrichedEvent> out) throws Exception {
 
         TreeSet<IoTMessageSchema> fieldBuffer = this.measurementBuffer.get(value.getPayload().getVarName());
         if (fieldBuffer == null)
@@ -60,31 +62,34 @@ public class DynamicEventBatchEnrichmentFunction
     }
 
     @Override
-    public void processElement2(EquipmentListEvent<IoTMessageSchema> value,
-            KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent<IoTMessageSchema>, AttributeEvent<String>>.Context ctx,
-            Collector<AttributeEvent<String>> out) throws Exception {
+    public void processElement2(EquipmentListEvent value,
+            KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent, EnrichedEvent>.Context ctx,
+            Collector<EnrichedEvent> out) throws Exception {
         this.eventBuffer.add(value);
         ctx.timerService().registerEventTimeTimer(ctx.timestamp());
     }
 
     @Override
     public void onTimer(long timestamp, OnTimerContext ctx,
-            Collector<AttributeEvent<String>> out)
+            Collector<EnrichedEvent> out)
             throws Exception {
 
         // For each buffered event enrich the event with attributes according to the
         // enrichment rules
-        for (EquipmentListEvent<IoTMessageSchema> event : this.eventBuffer.get()) {
-            Map<String, String> enrichment = new HashMap<>();
-            for (String field : event.getStatusFields()) {
-                TreeSet<IoTMessageSchema> fieldBuffer = this.measurementBuffer.get(field);
-                if (fieldBuffer != null) {
-                    IoTMessageSchema mostRecentMeasurement = fieldBuffer.floor(event.getBaseEvent().getMessage());
-                    enrichment.put(field, mostRecentMeasurement.getPayload().getTimestampUtc().toString()); // Can be null
+        for (EquipmentListEvent event : this.eventBuffer.get()) {
+            List<OcelAttribute> enrichment = new ArrayList<OcelAttribute>();
+            // Map<String, String> enrichment = new HashMap<>();
+            if (event.getEnrichmentRules() != null) {
+                for (EventEnrichmentRule eventEnrichmentRule : event.getEnrichmentRules()) {
+                    TreeSet<IoTMessageSchema> fieldBuffer = this.measurementBuffer.get(eventEnrichmentRule.getField());
+                    if (fieldBuffer != null) {
+                        IoTMessageSchema mostRecentMeasurement = fieldBuffer.floor(event.getBaseEvent().getIotMessage());
+                        if (mostRecentMeasurement != null && mostRecentMeasurement.getPayload() != null)
+                            enrichment.add(new OcelAttribute(eventEnrichmentRule.getStatusName(), mostRecentMeasurement.getPayload().getVarValue()));
+                    }
                 }
             }
-            out.collect(new AttributeEvent<String>(UUID.randomUUID().toString(),
-                    event.getBaseEvent().getRule().getEventName(), event.getBaseEvent().getMessage().getPayload().getTimestampUtc(), enrichment));
+            out.collect(new EnrichedEvent(event.getBaseEvent(), enrichment));
         }
         this.eventBuffer.clear();
 

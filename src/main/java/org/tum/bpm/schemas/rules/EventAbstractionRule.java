@@ -4,14 +4,19 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonIgn
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+
+
 @Data
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 @EqualsAndHashCode(callSuper=true)
-@JsonPropertyOrder({"__t", "eventName", "field", "triggerCategory", "triggerType", "value", "equipmentId", "control", "scopeId", "updatedAt", "createdAt"})
+@JsonPropertyOrder({"id", "createdAt", "updatedAt", "eventName", "field", "triggerCategory", "triggerType", "value", "from", "to", "scopeId","equipmentId", "viewId", "relations"})
 public class EventAbstractionRule extends Rule {
     @JsonProperty("eventName")
     private String eventName;    
@@ -32,8 +37,28 @@ public class EventAbstractionRule extends Rule {
     private String scopeId;
     @JsonProperty("equipmentId")
     private String equipmentId;
+    @JsonProperty("viewId")
+    private String viewId;
+    @JsonProperty("relations")
+    private List<EventResourceRelation> relations;
 
     public EventAbstractionRule() {
         super();
+    }
+
+    @Data
+    @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonPropertyOrder({"resourceModelId", "interactionType", "qualifier"})
+    public static class EventResourceRelation {
+
+        @JsonProperty("resourceModelId")
+        private String resourceModelId;
+
+        @JsonProperty("interactionType")
+        private String interactionType;
+
+        @JsonProperty("qualifier")
+        private String qualifier;
     }
 }

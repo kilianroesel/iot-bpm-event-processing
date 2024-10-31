@@ -18,35 +18,21 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonTypeInfo(
-    use = JsonTypeInfo.Id.NAME,
-    include = JsonTypeInfo.As.EXISTING_PROPERTY,
-    property = "__t"
+    use = JsonTypeInfo.Id.DEDUCTION,
+    include = JsonTypeInfo.As.EXISTING_PROPERTY
 )
 @JsonSubTypes({
     @Type(EventAbstractionRule.class),
     @Type(EventEnrichmentRule.class),
     @Type(EventScopingRule.class),
 })
-@JsonPropertyOrder({"_id", "__t", "control", "updatedAt", "createdAt"})
+@JsonPropertyOrder({"id", "updatedAt", "createdAt"})
 public class Rule {
  
-    @JsonProperty("_id")
-    private String _id;
-    @JsonProperty("__t")
-    private String __t;
+    @JsonProperty("id")
+    private String ruleId;
     @JsonProperty("updatedAt")
     private ZonedDateTime updatedAt;
     @JsonProperty("createdAt")
     private ZonedDateTime createdAt;
-    @JsonProperty("control")
-    private Control control;
-
-    public String getId() {
-        return this._id;
-    }
-
-    public enum Control {
-        ACTIVE,
-        INACTIVE
-    }
 }

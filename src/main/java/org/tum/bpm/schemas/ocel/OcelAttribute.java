@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public abstract class OcelAttribute {
+public class OcelAttribute {
     private String name;
+    private Object value;
 }

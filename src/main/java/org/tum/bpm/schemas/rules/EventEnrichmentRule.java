@@ -13,7 +13,7 @@ import lombok.EqualsAndHashCode;
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper=true)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({"statusName", "field", "equipmentId"})
+@JsonPropertyOrder({"id", "createdAt", "updatedAt", "statusName", "field", "equipmentId", "viewId"})
 public class EventEnrichmentRule extends Rule {
     @JsonProperty("statusName")
     private String statusName;
@@ -21,6 +21,8 @@ public class EventEnrichmentRule extends Rule {
     private String field;
     @JsonProperty("equipmentId")
     private String equipmentId;
+    @JsonProperty("viewId")
+    private String viewId;
 
     public EventEnrichmentRule() {
         super();

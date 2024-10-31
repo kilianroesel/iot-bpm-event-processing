@@ -1,6 +1,7 @@
 package org.tum.bpm.functions.enrichment;
 
 import java.util.List;
+import java.util.Map;
 import java.util.ArrayList;
 
 import org.apache.flink.api.common.state.BroadcastState;
@@ -9,60 +10,67 @@ import org.apache.flink.api.common.state.ReadOnlyBroadcastState;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.streaming.api.functions.co.KeyedBroadcastProcessFunction;
+import org.apache.flink.streaming.api.functions.co.BroadcastProcessFunction;
 import org.apache.flink.util.Collector;
 import org.tum.bpm.schemas.BaseEvent;
 import org.tum.bpm.schemas.EquipmentListEvent;
-import org.tum.bpm.schemas.measurements.IoTMessageSchema;
 import org.tum.bpm.schemas.rules.EventEnrichmentRule;
+import org.tum.bpm.schemas.rules.RuleControl;
 
-public class DynamicEventEnrichmentPreparationFunction extends
-        KeyedBroadcastProcessFunction<String, BaseEvent<IoTMessageSchema>, EventEnrichmentRule, EquipmentListEvent<IoTMessageSchema>> {
+public class DynamicEventEnrichmentPreparationFunction extends BroadcastProcessFunction<BaseEvent, RuleControl<EventEnrichmentRule>, EquipmentListEvent> {
 
     // Broadcast state
-    public static final MapStateDescriptor<String, List<String>> ENRICHMENT_RULES_BROADCAST_STATE_DESCRIPTOR = new MapStateDescriptor<String, List<String>>(
+    public static final MapStateDescriptor<String, List<EventEnrichmentRule>> ENRICHMENT_RULES_BROADCAST_STATE_DESCRIPTOR = new MapStateDescriptor<String, List<EventEnrichmentRule>>(
             "enrichmentRulesBroadcastState",
             BasicTypeInfo.STRING_TYPE_INFO,
-            TypeInformation.of(new TypeHint<List<String>>() {
+            TypeInformation.of(new TypeHint<List<EventEnrichmentRule>>() {
             }));
 
     @Override
-    public void processElement(BaseEvent<IoTMessageSchema> baseEvent,
-            KeyedBroadcastProcessFunction<String, BaseEvent<IoTMessageSchema>, EventEnrichmentRule, EquipmentListEvent<IoTMessageSchema>>.ReadOnlyContext ctx,
-            Collector<EquipmentListEvent<IoTMessageSchema>> out) throws Exception {
-        ReadOnlyBroadcastState<String, List<String>> enrichmentRuleState = ctx
+    public void processElement(BaseEvent baseEvent,
+            BroadcastProcessFunction<BaseEvent, RuleControl<EventEnrichmentRule>, EquipmentListEvent>.ReadOnlyContext ctx,
+            Collector<EquipmentListEvent> out) throws Exception {
+        ReadOnlyBroadcastState<String, List<EventEnrichmentRule>> enrichmentRuleState = ctx
                 .getBroadcastState(ENRICHMENT_RULES_BROADCAST_STATE_DESCRIPTOR);
-                
-        List<String> enrichmentRules = enrichmentRuleState.get(baseEvent.getRule().getEquipmentId());
-        EquipmentListEvent<IoTMessageSchema> equipmentListEvent = new EquipmentListEvent<>(baseEvent, enrichmentRules);
+
+        List<EventEnrichmentRule> enrichmentRules = enrichmentRuleState.get(baseEvent.getRule().getViewId());
+        EquipmentListEvent equipmentListEvent = new EquipmentListEvent(baseEvent, enrichmentRules);
 
         out.collect(equipmentListEvent);
     }
 
     @Override
-    public void processBroadcastElement(EventEnrichmentRule rule,
-            KeyedBroadcastProcessFunction<String, BaseEvent<IoTMessageSchema>, EventEnrichmentRule, EquipmentListEvent<IoTMessageSchema>>.Context ctx,
-            Collector<EquipmentListEvent<IoTMessageSchema>> out) throws Exception {
+    public void processBroadcastElement(RuleControl<EventEnrichmentRule> ruleControl,
+            BroadcastProcessFunction<BaseEvent, RuleControl<EventEnrichmentRule>, EquipmentListEvent>.Context ctx,
+            Collector<EquipmentListEvent> out) throws Exception {
 
-        BroadcastState<String, List<String>> broadcastState = ctx
+        EventEnrichmentRule rule = ruleControl.getRule();
+        BroadcastState<String, List<EventEnrichmentRule>> broadcastState = ctx
                 .getBroadcastState(ENRICHMENT_RULES_BROADCAST_STATE_DESCRIPTOR);
-        List<String> rules = broadcastState.get(rule.getEquipmentId());
 
-        if (rules == null) {
-            rules = new ArrayList<>();
-        }
-
-        switch (rule.getControl()) {
+        switch (ruleControl.getControl()) {
             case ACTIVE:
-                rules.removeIf(currentRule -> currentRule.equals(rule.getField()));
-                rules.add(rule.getField());
+                List<EventEnrichmentRule> rules = broadcastState.get(rule.getViewId());
+                if (rules == null) {
+                    rules = new ArrayList<>();
+                }
+                // Removes an old rule by the field
+                rules.removeIf(currentRule -> currentRule.getField().equals(rule.getField()));
+                rules.add(rule);
+                broadcastState.put(rule.getViewId(), rules);
                 break;
             case INACTIVE:
-                rules.removeIf(currentRule -> currentRule.equals(rule.getField()));
+                // Removes an inactive rule by id, we need to do that, because we only know of
+                // the id on delete
+                for (Map.Entry<String, List<EventEnrichmentRule>> fieldRuleMap : broadcastState.entries()) {
+                    String key = fieldRuleMap.getKey();
+                    rules = fieldRuleMap.getValue();
+                    rules.removeIf(currentRule -> currentRule.getRuleId().equals(rule.getRuleId()));
+                    broadcastState.put(key, rules);
+                }
                 break;
             default:
                 break;
         }
-        broadcastState.put(rule.getEquipmentId(), rules);
     }
 }
