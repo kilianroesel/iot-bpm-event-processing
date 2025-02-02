@@ -12,10 +12,10 @@ import org.tum.bpm.functions.correlation.EventResourceCorrelationFunction;
 import org.tum.bpm.functions.deserialization.MongoChangeStreamDeserialization;
 import org.tum.bpm.functions.deserialization.RulesDeserialization;
 import org.tum.bpm.functions.enrichment.EventBatchEnrichmentFunction;
-import org.tum.bpm.functions.ocelSerialization.OcelEventSerialization;
-import org.tum.bpm.functions.ocelSerialization.OcelObjectSerialization;
 import org.tum.bpm.functions.enrichment.DynamicEventEnrichmentPreparationFunction;
 import org.tum.bpm.functions.scoping.DynamicScopeFunction;
+import org.tum.bpm.functions.serialization.OcelEventSerialization;
+import org.tum.bpm.functions.serialization.OcelObjectSerialization;
 import org.tum.bpm.schemas.EnrichedEvent;
 import org.tum.bpm.schemas.BaseEvent;
 import org.tum.bpm.schemas.CorrelatedEvent;
@@ -33,6 +33,7 @@ import org.tum.bpm.schemas.rules.ResourceNameRule;
 import org.tum.bpm.schemas.rules.Rule;
 import org.tum.bpm.schemas.rules.RuleControl;
 import org.tum.bpm.sinks.KafkaBpmSink;
+import org.tum.bpm.sinks.MongoBpmSink;
 import org.tum.bpm.sources.MeasurementKafkaSource;
 import org.tum.bpm.sources.RulesSource;
 
@@ -75,8 +76,6 @@ public class EventProcessingPipeline {
                     .connect(eventScopingRuleBroadcast)
                     .process(new DynamicScopeFunction());
 
-            scopedIoTMessageStream.print();
-
             // 1. Key by scope and edge device id -> each measurement is now uniquely
             // identifiable and interpretable
             // 2. The dynamic event abstraction function creates the event, based on the
@@ -118,6 +117,7 @@ public class EventProcessingPipeline {
             DataStream<OcelObject> ocelObjects = resourceStream.connect(resourceNameRuleBroadcast)
                     .process(new OcelObjectSerialization());
 
+            ocelEvents.sinkTo(MongoBpmSink.createOcelEventSink());
             ocelEvents.sinkTo(KafkaBpmSink.createOcelEventSink());
             ocelObjects.sinkTo(KafkaBpmSink.createOcelObjectSink());
             env.execute("Testing flink consumer");

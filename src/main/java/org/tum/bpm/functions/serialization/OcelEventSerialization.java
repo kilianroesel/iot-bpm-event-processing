@@ -1,4 +1,4 @@
-package org.tum.bpm.functions.ocelSerialization;
+package org.tum.bpm.functions.serialization;
 
 import java.util.UUID;
 
