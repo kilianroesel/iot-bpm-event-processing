@@ -7,7 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 @Data
 @NoArgsConstructor
@@ -15,7 +15,7 @@ import java.time.ZonedDateTime;
 @JsonPropertyOrder({"time", "value", "field", "deviceId", "machineId", "machineName"})
 public class CSVMeasurement implements Comparable<CSVMeasurement> {
     @JsonProperty("time")
-    private ZonedDateTime time;
+    private Instant time;
 
     @JsonProperty("value")
     private String value;

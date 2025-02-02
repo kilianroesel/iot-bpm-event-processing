@@ -7,7 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 @Data
 @NoArgsConstructor
@@ -28,7 +28,7 @@ public class IoTMessageSchema implements Comparable<IoTMessageSchema> {
     private String correlationId;
 
     @JsonProperty("messageTs")
-    private ZonedDateTime messageTs;
+    private Instant messageTs;
     
     @JsonProperty("payload")
     private CSIMeasurement payload;

@@ -41,9 +41,7 @@ public class DynamicScopeFunction
 
         String scope = measurement.getPayload().getMachineName()
                 + measurement.getPayload().getVersionCsiStd()
-                + measurement.getPayload().getVersionCsiSpecific()
-                + measurement.getPayload().getMachineSoftwareVersion()
-                + measurement.getPayload().getMachineMasterSoftwareVersion();
+                + measurement.getPayload().getVersionCsiSpecific();
 
         EventScopingRule rule = rulesState.get(scope);
         if (rule == null) {
@@ -73,9 +71,7 @@ public class DynamicScopeFunction
         if (ruleControl.getControl() == RuleControl.Control.ACTIVE) {
             String scope = rule.getMachineName()
                     + rule.getVersionCsiStd()
-                    + rule.getVersionCsiSpecific()
-                    + rule.getMachineSoftwareVersion()
-                    + rule.getMachineMasterSoftwareVersion();
+                    + rule.getVersionCsiSpecific();
                     
             broadcastState.put(scope, rule);
             if (ruleKey != null) {

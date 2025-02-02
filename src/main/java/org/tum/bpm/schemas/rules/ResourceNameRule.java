@@ -7,21 +7,16 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonPro
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
 @Data
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper=true)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({"id", "createdAt", "updatedAt", "machineName", "versionCsiStd", "versionCsiSpecific"})
-public class EventScopingRule extends Rule {
-    @JsonProperty("machineName")
-    private String machineName;
-    @JsonProperty("versionCsiStd")
-    private String versionCsiStd;
-    @JsonProperty("versionCsiSpecific")
-    private String versionCsiSpecific;
+@EqualsAndHashCode(callSuper=true)
+@JsonPropertyOrder({"id", "createdAt", "updatedAt", "resourceId"})
+public class ResourceNameRule extends Rule {
+    @JsonProperty("resourceModelName")
+    private String resourceModelName;
 
-    public EventScopingRule() {
+    public ResourceNameRule() {
         super();
     }
 }

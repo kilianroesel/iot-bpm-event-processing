@@ -96,26 +96,29 @@ public class DynamicEventAbstractionFunction extends
 
     private boolean evaluateRule(EventAbstractionRule rule, IoTMessageSchema measurement,
             IoTMessageSchema lastMeasurement) {
+        Double currentValue = Double.parseDouble(measurement.getPayload().getVarValue());
+        Double lastValue = Double.parseDouble(lastMeasurement.getPayload().getVarValue());
         switch (rule.getTriggerType()) {
             case "CHANGES_TO":
-                return rule.getValue() == Double.parseDouble(measurement.getPayload().getVarValue())
-                        && Double.parseDouble(measurement.getPayload().getVarValue()) != Double
-                                .parseDouble(lastMeasurement.getPayload().getVarValue());
+                return rule.getValue() == currentValue
+                        && currentValue != lastValue;
+            case "CHANGES_FROM":
+                return rule.getValue() != currentValue
+                        && rule.getValue() == lastValue;
             case "INCREASES_BY":
-                return Double.parseDouble(measurement.getPayload().getVarValue())
-                        - Double.parseDouble(lastMeasurement.getPayload().getVarValue()) >= rule.getValue();
+                return currentValue - lastValue >= rule.getValue();
             case "DECREASES_BY":
-                return Double.parseDouble(measurement.getPayload().getVarValue())
-                        - Double.parseDouble(lastMeasurement.getPayload().getVarValue()) <= rule.getValue();
+                return currentValue - lastValue <= rule.getValue();
             case "ABSOLUTE_CHANGE_IS_EQUAL":
-                return Math.abs(Double.parseDouble(measurement.getPayload().getVarValue())
-                        - Double.parseDouble(lastMeasurement.getPayload().getVarValue())) == rule.getValue();
+                return Math.abs(currentValue - lastValue) == rule.getValue();
             case "ABSOLUTE_CHANGE_IS_GREATER_EQUAL":
-                return Math.abs(Double.parseDouble(measurement.getPayload().getVarValue())
-                        - Double.parseDouble(lastMeasurement.getPayload().getVarValue())) >= rule.getValue();
+                return Math.abs(currentValue - lastValue) >= rule.getValue();
             case "CHANGE_IS_GREATER_EQUAL":
-                return (Double.parseDouble(measurement.getPayload().getVarValue())
-                        - Double.parseDouble(lastMeasurement.getPayload().getVarValue())) >= rule.getValue();
+                return (currentValue - lastValue) >= rule.getValue();
+            case "ENTERS_RANGE_FROM_TO":
+                return (rule.getFrom() <= currentValue && rule.getTo() >= currentValue) && (rule.getFrom() > lastValue || rule.getTo() < lastValue);
+            case "LEAVES_RANGE_FROM_TO":
+                return (rule.getFrom() <= lastValue && rule.getTo() >= lastValue) && (rule.getFrom() > currentValue || rule.getTo() < currentValue);
             default:
                 return false;
         }

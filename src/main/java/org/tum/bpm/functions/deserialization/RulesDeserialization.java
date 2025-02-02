@@ -14,10 +14,11 @@ import org.tum.bpm.schemas.debezium.MongoChangeStreamMessage;
 import org.tum.bpm.schemas.rules.EventAbstractionRule;
 import org.tum.bpm.schemas.rules.EventEnrichmentRule;
 import org.tum.bpm.schemas.rules.EventScopingRule;
+import org.tum.bpm.schemas.rules.ResourceNameRule;
 import org.tum.bpm.schemas.rules.Rule;
 import org.tum.bpm.schemas.rules.RuleControl;
 
-public class MongoDbChangeRuleDeserialization extends ProcessFunction<MongoChangeStreamMessage, RuleControl<Rule>> {
+public class RulesDeserialization extends ProcessFunction<MongoChangeStreamMessage, RuleControl<Rule>> {
 
     private transient ObjectMapper objectMapper;
 
@@ -33,8 +34,8 @@ public class MongoDbChangeRuleDeserialization extends ProcessFunction<MongoChang
             "eventEnrichmentRuleOutputTag") {
     };
 
-    public static final OutputTag<RuleControl<EventEnrichmentRule>> EVENT_RESOURCE_CORRELATION_RULE_OUTPUT_TAG = new OutputTag<RuleControl<EventEnrichmentRule>>(
-            "eventResourceCorrelationRules") {
+    public static final OutputTag<RuleControl<ResourceNameRule>> RESOURCE_NAME_RULE_OUTPUT_TAG = new OutputTag<RuleControl<ResourceNameRule>>(
+            "eventResourceNameRules") {
     };
 
     @Override
@@ -44,6 +45,7 @@ public class MongoDbChangeRuleDeserialization extends ProcessFunction<MongoChang
         this.objectMapper.registerSubtypes(new NamedType(EventAbstractionRule.class, "EventAbstractionRule"));
         this.objectMapper.registerSubtypes(new NamedType(EventScopingRule.class, "EventScopingRule"));
         this.objectMapper.registerSubtypes(new NamedType(EventEnrichmentRule.class, "EventEnrichmentRule"));
+        this.objectMapper.registerSubtypes(new NamedType(ResourceNameRule.class, "ResourceNameRule"));
         this.objectMapper.registerModule(new JavaTimeModule());
     }
 
@@ -65,7 +67,6 @@ public class MongoDbChangeRuleDeserialization extends ProcessFunction<MongoChang
             control = RuleControl.Control.ACTIVE;
         }
         if (changeStreamMessage.getOperationType().equals("delete")) {
-            control = RuleControl.Control.INACTIVE;
             JsonNode jsonNode = objectMapper.readTree(changeStreamMessage.getId());
             String ruleId = jsonNode.get("_id").get("_id").get("$oid").asText();
             String ruleType = changeStreamMessage.getNamespace().getCollection();
@@ -81,6 +82,10 @@ public class MongoDbChangeRuleDeserialization extends ProcessFunction<MongoChang
             }
             if (ruleType.equals("event_scoping_rules")) {
                 rule = new EventScopingRule();
+                rule.setRuleId(ruleId);
+            }
+            if (ruleType.equals("resource_name_rules")) {
+                rule = new ResourceNameRule();
                 rule.setRuleId(ruleId);
             }
             control = RuleControl.Control.INACTIVE;
@@ -101,7 +106,10 @@ public class MongoDbChangeRuleDeserialization extends ProcessFunction<MongoChang
             RuleControl<EventEnrichmentRule> ruleControl = new RuleControl<EventEnrichmentRule>(
                     (EventEnrichmentRule) rule, control);
             ctx.output(EVENT_ENRICHMENT_RULE_OUTPUT_TAG, ruleControl);
+        } else if (rule instanceof ResourceNameRule) {
+            RuleControl<ResourceNameRule> ruleControl = new RuleControl<ResourceNameRule>((ResourceNameRule) rule,
+            control);
+            ctx.output(RESOURCE_NAME_RULE_OUTPUT_TAG, ruleControl);
         }
     }
-
 }

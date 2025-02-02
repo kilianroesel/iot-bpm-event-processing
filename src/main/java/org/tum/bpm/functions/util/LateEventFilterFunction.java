@@ -1,4 +1,4 @@
-package org.tum.bpm.functions.eventtime;
+package org.tum.bpm.functions.util;
 
 import org.apache.flink.streaming.api.functions.ProcessFunction;
 import org.apache.flink.util.Collector;

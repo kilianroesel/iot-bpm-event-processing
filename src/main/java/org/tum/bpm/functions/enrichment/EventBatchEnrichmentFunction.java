@@ -2,8 +2,6 @@ package org.tum.bpm.functions.enrichment;
 
 import java.util.Map;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
@@ -95,8 +93,7 @@ public class EventBatchEnrichmentFunction
 
         // TODO: don't clean the latest measurement
 
-        ZonedDateTime waterMarkTime = ZonedDateTime
-                .ofInstant(Instant.ofEpochMilli(ctx.timerService().currentWatermark()), ZoneId.of("UTC"));
+        Instant waterMarkTime = Instant.ofEpochMilli(ctx.timerService().currentWatermark());
         IoTMessageSchema dummyMeasurement = new IoTMessageSchema();
         dummyMeasurement.setPayload(new CSIMeasurement());
         dummyMeasurement.getPayload().setTimestampUtc(waterMarkTime);

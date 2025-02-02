@@ -1,0 +1,11 @@
+Before building do not forget packaging
+
+```
+docker build . -t acrbpmeventprocessingdev.azurecr.io/iot-bpm-event-processing:dev-release-1.0.0
+
+az acr login --name acrbpmeventprocessingdev.azurecr.io
+docker push acrbpmeventprocessingdev.azurecr.io/iot-bpm-event-processing:dev-release-1.0.0
+
+kubectl create -f deployment/flink-deployment.yaml
+kubectl delete flinkdeployment/state-machine-example
+```

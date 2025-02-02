@@ -45,8 +45,24 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
             KeyedProcessFunction<String, EnrichedEvent, CorrelatedEvent>.Context ctx, Collector<CorrelatedEvent> out)
             throws Exception {
         
-        List<EventResourceRelation> correlationRules = event.getEvent().getRule().getRelations();
         List<OcelRelationship> correlations = new ArrayList<>();
+        // Default correlations, correlating device Id, machine Id, etc.
+        String edgeDeviceId = event.getEvent().getIotMessage().getPayload().getEdgeDeviceId();
+        String machineNumber = event.getEvent().getIotMessage().getPayload().getMachineNumber();
+
+        String equipmentId = event.getEvent().getRule().getEquipmentId();
+        String equipmentPath = event.getEvent().getRule().getEquipmentId();
+        correlations.add(new OcelRelationship(edgeDeviceId, "edgeDeviceId"));
+        correlations.add(new OcelRelationship(machineNumber, "machineNumber"));
+        correlations.add(new OcelRelationship(equipmentId, "equipmentId"));
+        correlations.add(new OcelRelationship(equipmentPath, "equipmentPath"));
+
+
+        correlations.add(new OcelRelationship("," + edgeDeviceId + "," +equipmentId + ",", "deviceEquipment"));        
+        correlations.add(new OcelRelationship("," + edgeDeviceId + equipmentPath, "deviceEquipmentPath"));        
+
+        // Correlate according to correlation rules
+        List<EventResourceRelation> correlationRules = event.getEvent().getRule().getRelations();
         for (EventResourceRelation correlationRule: correlationRules) {
             Queue<Resource> resourceQueue = this.resourceQueues.get(correlationRule.getResourceModelId());
             if (resourceQueue == null) {

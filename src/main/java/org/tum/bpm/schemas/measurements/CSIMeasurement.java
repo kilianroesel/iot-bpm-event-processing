@@ -1,9 +1,10 @@
 package org.tum.bpm.schemas.measurements;
 
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 import lombok.AllArgsConstructor;
@@ -13,7 +14,8 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonPropertyOrder({ "edgeDeviceId", "versionCsiStd", "versionCsiSpecific", "machineSoftwareVersion",
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonPropertyOrder({ "edgeDeviceId", "versionCsiStd",
         "machineMasterSoftwareVersion", "varName", "varDataType", "varValue", "machineType", "machineNumber",
         "machineName", "machineId", "timestampUtc", "timestampMachine" })
 public class CSIMeasurement implements Comparable<CSIMeasurement>  {
@@ -26,12 +28,6 @@ public class CSIMeasurement implements Comparable<CSIMeasurement>  {
 
     @JsonProperty("versionCsiSpecific")
     private String versionCsiSpecific;
-
-    @JsonProperty("machineSoftwareVersion")
-    private String machineSoftwareVersion;
-
-    @JsonProperty("machineMasterSoftwareVersion")
-    private String machineMasterSoftwareVersion;
 
     @JsonProperty("varName")
     private String varName;
@@ -55,7 +51,7 @@ public class CSIMeasurement implements Comparable<CSIMeasurement>  {
     private String machineId;
 
     @JsonProperty("timestampUtc")
-    private ZonedDateTime timestampUtc;
+    private Instant timestampUtc;
 
     @JsonProperty("timestampMachine")
     private LocalDateTime timestampMachine;

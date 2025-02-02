@@ -7,11 +7,10 @@ import org.apache.flink.streaming.api.datastream.BroadcastStream;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-
 import org.tum.bpm.functions.abstraction.DynamicEventAbstractionFunction;
 import org.tum.bpm.functions.correlation.EventResourceCorrelationFunction;
 import org.tum.bpm.functions.deserialization.MongoChangeStreamDeserialization;
-import org.tum.bpm.functions.deserialization.MongoDbChangeRuleDeserialization;
+import org.tum.bpm.functions.deserialization.RulesDeserialization;
 import org.tum.bpm.functions.enrichment.EventBatchEnrichmentFunction;
 import org.tum.bpm.functions.ocelSerialization.OcelEventSerialization;
 import org.tum.bpm.functions.ocelSerialization.OcelObjectSerialization;
@@ -30,6 +29,7 @@ import org.tum.bpm.schemas.ocel.OcelObject;
 import org.tum.bpm.schemas.rules.EventAbstractionRule;
 import org.tum.bpm.schemas.rules.EventEnrichmentRule;
 import org.tum.bpm.schemas.rules.EventScopingRule;
+import org.tum.bpm.schemas.rules.ResourceNameRule;
 import org.tum.bpm.schemas.rules.Rule;
 import org.tum.bpm.schemas.rules.RuleControl;
 import org.tum.bpm.sinks.KafkaBpmSink;
@@ -55,26 +55,27 @@ public class EventProcessingPipeline {
                     .process(new MongoChangeStreamDeserialization());
 
             SingleOutputStreamOperator<RuleControl<Rule>> splitRuleStream = ruleStream
-                    .process(new MongoDbChangeRuleDeserialization());
+                    .process(new RulesDeserialization());
 
             BroadcastStream<RuleControl<EventScopingRule>> eventScopingRuleBroadcast = splitRuleStream
-                    .getSideOutput(MongoDbChangeRuleDeserialization.EVENT_SCOPING_RULE_OUTPUT_TAG)
+                    .getSideOutput(RulesDeserialization.EVENT_SCOPING_RULE_OUTPUT_TAG)
                     .broadcast(DynamicScopeFunction.SCOPE_RULES_BROADCAST_STATE_DESCRIPTOR);
             BroadcastStream<RuleControl<EventAbstractionRule>> eventAbstractionRuleBroadcast = splitRuleStream
-                    .getSideOutput(MongoDbChangeRuleDeserialization.EVENT_ABSTRACTION_RULE_OUTPUT_TAG)
+                    .getSideOutput(RulesDeserialization.EVENT_ABSTRACTION_RULE_OUTPUT_TAG)
                     .broadcast(DynamicEventAbstractionFunction.ABSTRACTION_RULES_BROADCAST_STATE_DESCRIPTOR);
             BroadcastStream<RuleControl<EventEnrichmentRule>> eventEnrichmentRuleBroadcast = splitRuleStream
-                    .getSideOutput(MongoDbChangeRuleDeserialization.EVENT_ENRICHMENT_RULE_OUTPUT_TAG)
+                    .getSideOutput(RulesDeserialization.EVENT_ENRICHMENT_RULE_OUTPUT_TAG)
                     .broadcast(DynamicEventEnrichmentPreparationFunction.ENRICHMENT_RULES_BROADCAST_STATE_DESCRIPTOR);
-            // BroadcastStream<RuleControl<EventEnrichmentRule>>
-            // eventResourceCorrelationRuleBroadcast = splitRuleStream
-            // .getSideOutput(MongoDbChangeRuleDeserialization.EVENT_RESOURCE_CORRELATION_RULE_OUTPUT_TAG)
-            // .broadcast(DynamicEventResourceCorrelationFunction.EVENT_RESOURCE_CORRELATION_RULES_BROADCAST_STATE_DESCRIPTOR);
+            BroadcastStream<RuleControl<ResourceNameRule>> resourceNameRuleBroadcast = splitRuleStream
+                    .getSideOutput(RulesDeserialization.RESOURCE_NAME_RULE_OUTPUT_TAG)
+                    .broadcast(OcelObjectSerialization.RESOURCE_NAME_RULE_BROADCAST_STATE_DESCRIPTOR);
 
             // Connect Scoping rule Stream and assign a Scope to each IoTMeasurement
             DataStream<Scoped<IoTMessageSchema, String>> scopedIoTMessageStream = iotMessageStream
                     .connect(eventScopingRuleBroadcast)
                     .process(new DynamicScopeFunction());
+
+            scopedIoTMessageStream.print();
 
             // 1. Key by scope and edge device id -> each measurement is now uniquely
             // identifiable and interpretable
@@ -110,19 +111,15 @@ public class EventProcessingPipeline {
                             .getIotMessage().getPayload().getEdgeDeviceId())
                     .process(new EventResourceCorrelationFunction());
 
-            // SingleOutputStreamOperator<CorrelatedEvent> correlatedEvents = enrichedEvents
-            //         .keyBy(enrichedEvent -> enrichedEvent.getEvent()
-            //                 .getIotMessage().getPayload().getEdgeDeviceId())
-            //         .process(new EventResourceCorrelationFunction());
-
-            DataStream<Resource> resourceStream = correlatedEvents.getSideOutput(EventResourceCorrelationFunction.RESOURCE_OUTPUT_TAG);
+            DataStream<Resource> resourceStream = correlatedEvents
+                    .getSideOutput(EventResourceCorrelationFunction.RESOURCE_OUTPUT_TAG);
 
             DataStream<OcelEvent> ocelEvents = correlatedEvents.map(new OcelEventSerialization());
-            DataStream<OcelObject> ocelResources = resourceStream.map(new OcelObjectSerialization());
+            DataStream<OcelObject> ocelObjects = resourceStream.connect(resourceNameRuleBroadcast)
+                    .process(new OcelObjectSerialization());
 
-            ocelEvents.print();
-            ocelResources.print();
-            // correlatedEvents.sinkTo(KafkaBpmSink.createEventSink());
+            ocelEvents.sinkTo(KafkaBpmSink.createOcelEventSink());
+            ocelObjects.sinkTo(KafkaBpmSink.createOcelObjectSink());
             env.execute("Testing flink consumer");
         } catch (FileNotFoundException e) {
             System.out.println("FileNoteFoundException: " + e);

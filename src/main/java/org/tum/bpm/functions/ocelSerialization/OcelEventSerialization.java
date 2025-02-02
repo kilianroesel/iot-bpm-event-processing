@@ -11,7 +11,9 @@ public class OcelEventSerialization implements MapFunction<CorrelatedEvent, Ocel
     @Override
     public OcelEvent map(CorrelatedEvent event) throws Exception {
         String eventId = UUID.randomUUID().toString();
-        return new OcelEvent(eventId, event.getEvent().getRule().getEventName(), event.getEvent().getIotMessage().getPayload().getTimestampUtc(), event.getEnrichment(), event.getCorrelation());
+
+        return new OcelEvent(eventId, event.getEvent().getRule().getEventName(),
+        event.getEvent().getIotMessage().getPayload().getTimestampUtc(), event.getEnrichment(),
+        event.getCorrelation());
     }
-    
 }

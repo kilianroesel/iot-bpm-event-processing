@@ -1,6 +1,6 @@
 package org.tum.bpm.schemas.rules;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
@@ -32,7 +32,7 @@ public class Rule {
     @JsonProperty("id")
     private String ruleId;
     @JsonProperty("updatedAt")
-    private ZonedDateTime updatedAt;
+    private Instant updatedAt;
     @JsonProperty("createdAt")
-    private ZonedDateTime createdAt;
+    private Instant createdAt;
 }

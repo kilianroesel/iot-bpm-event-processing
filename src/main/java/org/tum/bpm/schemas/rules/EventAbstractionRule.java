@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 @EqualsAndHashCode(callSuper=true)
-@JsonPropertyOrder({"id", "createdAt", "updatedAt", "eventName", "field", "triggerCategory", "triggerType", "value", "from", "to", "scopeId","equipmentId", "viewId", "relations"})
+@JsonPropertyOrder({"id", "createdAt", "updatedAt", "eventName", "field", "triggerCategory", "triggerType", "value", "from", "to", "scopeId","equipmentId", "equipmentPath", "viewId", "relations"})
 public class EventAbstractionRule extends Rule {
     @JsonProperty("eventName")
     private String eventName;    
@@ -37,6 +37,8 @@ public class EventAbstractionRule extends Rule {
     private String scopeId;
     @JsonProperty("equipmentId")
     private String equipmentId;
+    @JsonProperty("equipmentPath")
+    private String equipmentPath;
     @JsonProperty("viewId")
     private String viewId;
     @JsonProperty("relations")
