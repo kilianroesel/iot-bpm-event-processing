@@ -117,6 +117,8 @@ public class EventProcessingPipeline {
             DataStream<OcelObject> ocelObjects = resourceStream.connect(resourceNameRuleBroadcast)
                     .process(new OcelObjectSerialization());
 
+            ocelEvents.print();
+
             ocelEvents.sinkTo(MongoBpmSink.createOcelEventSink());
             ocelEvents.sinkTo(KafkaBpmSink.createOcelEventSink());
             ocelObjects.sinkTo(KafkaBpmSink.createOcelObjectSink());
