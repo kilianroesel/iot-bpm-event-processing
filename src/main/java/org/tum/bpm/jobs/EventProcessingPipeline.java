@@ -42,7 +42,7 @@ public class EventProcessingPipeline {
     public static void main(String[] args) throws Exception {
         try {
             final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-            // env.enableCheckpointing(3000);
+        //     env.enableCheckpointing(30000);
 
             DataStream<IoTMessageSchema> iotMessageStream = env
                     .fromSource(MeasurementKafkaSource.createMeasurementSource(),

@@ -10,7 +10,7 @@ import lombok.Data;
 @AllArgsConstructor
 public class BaseEvent {
     // The rule that triggered the event
-    private final EventAbstractionRule rule;
+    private EventAbstractionRule rule;
     // The underlying messsage that the event was evaluated on
-    private final IoTMessageSchema iotMessage;
+    private IoTMessageSchema iotMessage;
 }

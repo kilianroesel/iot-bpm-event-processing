@@ -6,6 +6,6 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class Scoped<IN, SCOPE> {
-  private final IN wrapped;
-  private final SCOPE scope;
+  private IN wrapped;
+  private SCOPE scope;
 }

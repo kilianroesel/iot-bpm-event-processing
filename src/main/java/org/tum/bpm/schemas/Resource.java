@@ -13,11 +13,11 @@ import lombok.Data;
 public class Resource {
     
     @JsonProperty("resourceId")
-    private final String resourceId;
+    private String resourceId;
 
     @JsonProperty("resourceModelId")
-    private final String resourceModelId;
+    private String resourceModelId;
 
     @JsonProperty("enrichment")
-    private final List<OcelAttribute> enrichment;
+    private List<OcelAttribute> enrichment;
 }

@@ -11,6 +11,6 @@ import lombok.Data;
 @AllArgsConstructor
 public class EnrichedEvent {
 
-    private final BaseEvent event;
-    private final List<OcelAttribute> enrichment;
+    private BaseEvent event;
+    private List<OcelAttribute> enrichment;
 }

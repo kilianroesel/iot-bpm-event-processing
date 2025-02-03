@@ -12,7 +12,7 @@ import lombok.Data;
 @AllArgsConstructor
 public class CorrelatedEvent {
 
-    private final BaseEvent event;
+    private BaseEvent event;
     private List<OcelAttribute> enrichment;
     private List<OcelRelationship> correlation;
 
