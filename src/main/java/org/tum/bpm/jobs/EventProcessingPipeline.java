@@ -122,7 +122,7 @@ public class EventProcessingPipeline {
             ocelEvents.sinkTo(MongoBpmSink.createOcelEventSink());
             ocelEvents.sinkTo(KafkaBpmSink.createOcelEventSink());
             ocelObjects.sinkTo(KafkaBpmSink.createOcelObjectSink());
-            env.execute("Testing flink consumer");
+            env.execute("Event processing pipeline");
         } catch (FileNotFoundException e) {
             System.out.println("FileNoteFoundException: " + e);
         }
