@@ -7,8 +7,10 @@ import org.tum.bpm.schemas.ocel.OcelAttribute;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 public class Resource {
     
