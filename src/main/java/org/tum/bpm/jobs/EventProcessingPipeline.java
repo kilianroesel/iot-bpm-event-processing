@@ -1,7 +1,5 @@
 package org.tum.bpm.jobs;
 
-import java.io.FileNotFoundException;
-
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.streaming.api.datastream.BroadcastStream;
 import org.apache.flink.streaming.api.datastream.DataStream;
