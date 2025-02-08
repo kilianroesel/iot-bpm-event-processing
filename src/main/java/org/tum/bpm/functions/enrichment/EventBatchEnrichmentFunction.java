@@ -14,6 +14,7 @@ import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.metrics.Gauge;
 import org.apache.flink.streaming.api.functions.co.KeyedCoProcessFunction;
 import org.apache.flink.util.Collector;
 import org.tum.bpm.schemas.EquipmentListEvent;
@@ -45,6 +46,17 @@ public class EventBatchEnrichmentFunction
     public void open(Configuration parameters) {
         this.measurementBuffer = getRuntimeContext().getMapState(measurementBufferDescriptor);
         this.eventBuffer = getRuntimeContext().getListState(eventBufferDescriptor);
+        getRuntimeContext().getMetricGroup().gauge("eventEnrichmentBufferGauge", (Gauge<Integer>) () -> {
+            try {
+                int totalSize = 0;
+                for (TreeSet<IoTMessageSchema> buffer : this.measurementBuffer.values()) {
+                    totalSize += buffer.size();
+                }
+                return totalSize;
+            } catch (Exception e) {
+                return 0;
+            }
+        });
     }
 
     @Override

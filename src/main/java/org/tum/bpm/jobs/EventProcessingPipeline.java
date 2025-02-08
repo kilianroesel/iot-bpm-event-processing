@@ -44,13 +44,15 @@ public class EventProcessingPipeline {
         DataStream<IoTMessageSchema> iotMessageStream = env
                 .fromSource(MeasurementKafkaSource.createMeasurementSource(),
                         MeasurementKafkaSource.createWatermarkStrategy(),
-                        "Measurement Source");
+                        "Measurement Source")
+                .name("IoT-Message-Stream");
 
         DataStream<MongoChangeStreamMessage> ruleStream = env
                 .fromSource(RulesSource.createRulesIncrementalSource(),
                         RulesSource.createWatermarkStrategy(), "Rule Bootstrap Source")
                 .setParallelism(1)
-                .process(new MongoChangeStreamDeserialization());
+                .process(new MongoChangeStreamDeserialization())
+                .name("Rule-Stream");
 
         SingleOutputStreamOperator<RuleControl<Rule>> splitRuleStream = ruleStream
                 .process(new RulesDeserialization());
@@ -71,9 +73,11 @@ public class EventProcessingPipeline {
         // Connect Scoping rule Stream and assign a Scope to each IoTMeasurement
         DataStream<Scoped<IoTMessageSchema, String>> scopedIoTMessageStream = iotMessageStream
                 .connect(eventScopingRuleBroadcast)
-                .process(new DynamicScopeFunction());
+                .process(new DynamicScopeFunction())
+                .name("Scoped Stream");
 
-        // 1. Key by scope, edge device id and variable name -> each measurement is now uniquely
+        // 1. Key by scope, edge device id and variable name -> each measurement is now
+        // uniquely
         // identifiable and interpretable
         // 2. The dynamic event abstraction function creates the event, based on the
         // abstraction rule stream.
@@ -82,7 +86,8 @@ public class EventProcessingPipeline {
                         + message.getWrapped().getPayload().getEdgeDeviceId()
                         + message.getWrapped().getPayload().getVarName())
                 .connect(eventAbstractionRuleBroadcast)
-                .process(new DynamicEventAbstractionFunction());
+                .process(new DynamicEventAbstractionFunction())
+                .name("Event Stream");
 
         // We cannot combine a coprocess function and a broadcast function at once, so
         // we have to prepare it like this. The
@@ -101,19 +106,21 @@ public class EventProcessingPipeline {
                                 + event.getBaseEvent().getIotMessage().getPayload()
                                         .getMachineId(),
                         BasicTypeInfo.STRING_TYPE_INFO)
-                .process(new EventBatchEnrichmentFunction());
+                .process(new EventBatchEnrichmentFunction())
+                .name("Enriched-Event Stream");
 
         SingleOutputStreamOperator<CorrelatedEvent> correlatedEvents = enrichedEvents
                 .keyBy(enrichedEvent -> enrichedEvent.getEvent()
                         .getIotMessage().getPayload().getEdgeDeviceId())
-                .process(new EventResourceCorrelationFunction());
+                .process(new EventResourceCorrelationFunction())
+                .name("Correlated-Event Stream");
 
         DataStream<Resource> resourceStream = correlatedEvents
                 .getSideOutput(EventResourceCorrelationFunction.RESOURCE_OUTPUT_TAG);
 
-        DataStream<OcelEvent> ocelEvents = correlatedEvents.map(new OcelEventSerialization());
+        DataStream<OcelEvent> ocelEvents = correlatedEvents.map(new OcelEventSerialization()).name("Ocel-Event Stream");
         DataStream<OcelObject> ocelObjects = resourceStream.connect(resourceNameRuleBroadcast)
-                .process(new OcelObjectSerialization());
+                .process(new OcelObjectSerialization()).name("Ocel-Object Stream");
 
         ocelEvents.print();
 
