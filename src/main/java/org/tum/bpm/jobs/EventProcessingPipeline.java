@@ -73,7 +73,7 @@ public class EventProcessingPipeline {
                 .connect(eventScopingRuleBroadcast)
                 .process(new DynamicScopeFunction());
 
-        // 1. Key by scope and edge device id -> each measurement is now uniquely
+        // 1. Key by scope, edge device id and variable name -> each measurement is now uniquely
         // identifiable and interpretable
         // 2. The dynamic event abstraction function creates the event, based on the
         // abstraction rule stream.
