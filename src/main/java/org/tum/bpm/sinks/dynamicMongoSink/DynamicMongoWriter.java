@@ -74,6 +74,7 @@ public class DynamicMongoWriter<IN extends DynamicMongoDocument> implements Sink
     private transient ScheduledFuture<?> scheduledFuture;
     private transient volatile Exception flushException;
 
+    @SuppressWarnings("deprecation")
     public DynamicMongoWriter(
              MongoConnectionOptions connectionOptions,
              MongoWriteOptions writeOptions,
@@ -99,7 +100,7 @@ public class DynamicMongoWriter<IN extends DynamicMongoDocument> implements Sink
          // Initialize the serialization schema.
          this.sinkContext = new DefaultMongoSinkContext(initContext, writeOptions);
          try {
-             SerializationSchema.InitializationContext initializationContext =
+            SerializationSchema.InitializationContext initializationContext =
                      initContext.asSerializationSchemaInitializationContext();
              serializationSchema.open(initializationContext, sinkContext, writeOptions);
          } catch (Exception e) {
