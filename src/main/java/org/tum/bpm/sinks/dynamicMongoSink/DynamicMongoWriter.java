@@ -44,7 +44,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * @param <IN> The type of the input elements.
  */
 @Internal
-public class DynamicMongoWriter<IN extends DynamicMongoDocument> implements SinkWriter<IN> {
+public class DynamicMongoWriter<IN> implements SinkWriter<DynamicMongoDocument<IN>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(DynamicMongoWriter.class);
 
@@ -136,7 +136,7 @@ public class DynamicMongoWriter<IN extends DynamicMongoDocument> implements Sink
      }
 
     @Override
-    public synchronized void write(IN element, Context context)
+    public synchronized void write(DynamicMongoDocument<IN> element, Context context)
             throws IOException, InterruptedException {
         checkFlushException();
 
@@ -152,7 +152,7 @@ public class DynamicMongoWriter<IN extends DynamicMongoDocument> implements Sink
             collector = new ListCollector<>(bulkRequests);
             this.collectors.put(element.getCollection(), collector);
         }
-        WriteModel<BsonDocument> writeModel = serializationSchema.serialize(element, sinkContext);
+        WriteModel<BsonDocument> writeModel = serializationSchema.serialize(element.getDocument(), sinkContext);
         collector.collect(writeModel);
 
         if (isOverMaxBatchSizeLimit() || isOverMaxBatchIntervalLimit()) {

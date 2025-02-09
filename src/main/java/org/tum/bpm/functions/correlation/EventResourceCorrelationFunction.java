@@ -54,19 +54,12 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
             throws Exception {
 
         List<OcelRelationship> correlations = new ArrayList<>();
+        
         // Default correlations, correlating device Id, machine Id, etc.
-        String edgeDeviceId = event.getEvent().getIotMessage().getPayload().getEdgeDeviceId();
-        String machineNumber = event.getEvent().getIotMessage().getPayload().getMachineNumber();
-
         String equipmentId = event.getEvent().getRule().getEquipmentId();
         String equipmentPath = event.getEvent().getRule().getEquipmentPath();
-        correlations.add(new OcelRelationship(edgeDeviceId, "edgeDeviceId"));
-        correlations.add(new OcelRelationship(machineNumber, "machineNumber"));
         correlations.add(new OcelRelationship(equipmentId, "equipmentId"));
         correlations.add(new OcelRelationship(equipmentPath, "equipmentPath"));
-
-        correlations.add(new OcelRelationship("," + edgeDeviceId + "," + equipmentId + ",", "deviceEquipment"));
-        correlations.add(new OcelRelationship("," + edgeDeviceId + equipmentPath, "deviceEquipmentPath"));
 
         // Update view state
         String viewId = event.getEvent().getRule().getViewId();
@@ -78,7 +71,6 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
             String resourceId = UUID.randomUUID().toString();
             Resource viewCorrelation = new Resource(resourceId, viewId + event.getEvent().getRule().getEventName(), event.getEnrichment());
             views.put(viewId, viewCorrelation);
-            System.out.println("Updated view state: " + viewId + " " + equipmentPath);
             this.viewState.put(equipmentPath, views);
         }
         // Correlate views along equipmentPath
@@ -86,7 +78,6 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
 
         for (int i = equipment.length - 1; i > 1; i--) {
             String currentPath = String.join(",", java.util.Arrays.copyOfRange(equipment, 0, i)) + ",";
-            System.out.println("Looking at: " + currentPath);
             Map<String, Resource> views = this.viewState.get(currentPath);
             if (views != null) {
                 for (Resource resource : views.values()) {

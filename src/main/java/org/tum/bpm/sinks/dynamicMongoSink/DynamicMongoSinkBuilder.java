@@ -19,7 +19,7 @@ import static org.apache.flink.util.Preconditions.checkState;
  * @param <IN> type of the records converted to MongoDB bulk request
  */
 @PublicEvolving
-public class DynamicMongoSinkBuilder<IN extends DynamicMongoDocument> {
+public class DynamicMongoSinkBuilder<IN> {
 
     private final MongoConnectionOptions.MongoConnectionOptionsBuilder connectionOptionsBuilder;
     private final MongoWriteOptions.MongoWriteOptionsBuilder writeOptionsBuilder;
