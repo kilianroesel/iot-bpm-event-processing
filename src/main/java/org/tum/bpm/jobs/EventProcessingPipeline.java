@@ -89,6 +89,8 @@ public class EventProcessingPipeline {
                 .process(new DynamicEventAbstractionFunction())
                 .name("Event Stream");
 
+        events.print();
+
         // We cannot combine a coprocess function and a broadcast function at once, so
         // we have to prepare it like this. The
         // DynamicEventEnrichmentPreparationFunction adds
@@ -114,6 +116,8 @@ public class EventProcessingPipeline {
                         .getIotMessage().getPayload().getEdgeDeviceId())
                 .process(new EventResourceCorrelationFunction())
                 .name("Correlated-Event Stream");
+
+        correlatedEvents.print();
 
         DataStream<Resource> resourceStream = correlatedEvents
                 .getSideOutput(EventResourceCorrelationFunction.RESOURCE_OUTPUT_TAG);

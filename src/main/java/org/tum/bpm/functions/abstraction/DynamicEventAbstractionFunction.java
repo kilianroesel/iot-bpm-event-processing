@@ -52,15 +52,13 @@ public class DynamicEventAbstractionFunction extends
 
         ReadOnlyBroadcastState<String, List<EventAbstractionRule>> abstractionRuleState = ctx
                 .getBroadcastState(ABSTRACTION_RULES_BROADCAST_STATE_DESCRIPTOR);
-        IoTMessageSchema lastValue = this.lastMeasurementState.value();
-        if (lastValue != null) {
-            List<EventAbstractionRule> rules = abstractionRuleState
-                    .get(measurement.getScope() + measurement.getWrapped().getPayload().getVarName());
-            if (rules != null) {
-                for (EventAbstractionRule rule : rules) {
-                    if (this.evaluateRule(rule, measurement.getWrapped(), lastValue))
-                        out.collect(new BaseEvent(rule, measurement.getWrapped()));
-                }
+        List<EventAbstractionRule> rules = abstractionRuleState
+                .get(measurement.getScope() + measurement.getWrapped().getPayload().getVarName());
+
+        if (rules != null) {
+            for (EventAbstractionRule rule : rules) {
+                if (this.evaluateRule(rule, measurement.getWrapped()))
+                    out.collect(new BaseEvent(rule, measurement.getWrapped()));
             }
         }
         this.lastMeasurementState.update(measurement.getWrapped());
@@ -94,10 +92,14 @@ public class DynamicEventAbstractionFunction extends
         broadcastState.put(rule.getScopeId() + rule.getField(), rules);
     }
 
-    private boolean evaluateRule(EventAbstractionRule rule, IoTMessageSchema measurement,
-            IoTMessageSchema lastMeasurement) {
-        Double currentValue = Double.parseDouble(measurement.getPayload().getVarValue());
-        Double lastValue = Double.parseDouble(lastMeasurement.getPayload().getVarValue());
+    private boolean evaluateRule(EventAbstractionRule rule, IoTMessageSchema measurement) throws Exception {
+        IoTMessageSchema lastMeasurement = this.lastMeasurementState.value();
+        double currentValue = Double.parseDouble(measurement.getPayload().getVarValue());
+
+        double lastValue = 0;
+        if (lastMeasurement != null) {
+            lastValue = Double.parseDouble(lastMeasurement.getPayload().getVarValue());
+        }
         switch (rule.getTriggerType()) {
             case "CHANGES_TO":
                 return rule.getValue() == currentValue
@@ -116,9 +118,11 @@ public class DynamicEventAbstractionFunction extends
             case "CHANGE_IS_GREATER_EQUAL":
                 return (currentValue - lastValue) >= rule.getValue();
             case "ENTERS_RANGE_FROM_TO":
-                return (rule.getFrom() <= currentValue && rule.getTo() >= currentValue) && (rule.getFrom() > lastValue || rule.getTo() < lastValue);
+                return (rule.getFrom() <= currentValue && rule.getTo() >= currentValue)
+                        && (rule.getFrom() > lastValue || rule.getTo() < lastValue);
             case "LEAVES_RANGE_FROM_TO":
-                return (rule.getFrom() <= lastValue && rule.getTo() >= lastValue) && (rule.getFrom() > currentValue || rule.getTo() < currentValue);
+                return (rule.getFrom() <= lastValue && rule.getTo() >= lastValue)
+                        && (rule.getFrom() > currentValue || rule.getTo() < currentValue);
             default:
                 return false;
         }
