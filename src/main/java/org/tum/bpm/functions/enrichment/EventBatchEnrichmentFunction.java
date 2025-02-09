@@ -1,7 +1,5 @@
 package org.tum.bpm.functions.enrichment;
 
-import java.util.Map;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
@@ -18,7 +16,6 @@ import org.apache.flink.metrics.Gauge;
 import org.apache.flink.streaming.api.functions.co.KeyedCoProcessFunction;
 import org.apache.flink.util.Collector;
 import org.tum.bpm.schemas.EquipmentListEvent;
-import org.tum.bpm.schemas.measurements.CSIMeasurement;
 import org.tum.bpm.schemas.measurements.IoTMessageSchema;
 import org.tum.bpm.schemas.ocel.OcelAttribute;
 import org.tum.bpm.schemas.rules.EventEnrichmentRule;
