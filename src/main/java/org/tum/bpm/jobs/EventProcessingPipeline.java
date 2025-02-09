@@ -89,8 +89,6 @@ public class EventProcessingPipeline {
                 .process(new DynamicEventAbstractionFunction())
                 .name("Event Stream");
 
-        events.print();
-
         // We cannot combine a coprocess function and a broadcast function at once, so
         // we have to prepare it like this. The
         // DynamicEventEnrichmentPreparationFunction adds
@@ -117,16 +115,12 @@ public class EventProcessingPipeline {
                 .process(new EventResourceCorrelationFunction())
                 .name("Correlated-Event Stream");
 
-        correlatedEvents.print();
-
         DataStream<Resource> resourceStream = correlatedEvents
                 .getSideOutput(EventResourceCorrelationFunction.RESOURCE_OUTPUT_TAG);
 
         DataStream<OcelEvent> ocelEvents = correlatedEvents.map(new OcelEventSerialization()).name("Ocel-Event Stream");
         DataStream<OcelObject> ocelObjects = resourceStream.connect(resourceNameRuleBroadcast)
                 .process(new OcelObjectSerialization()).name("Ocel-Object Stream");
-
-        ocelEvents.print();
 
         ocelEvents.sinkTo(MongoBpmSink.createOcelEventSink());
         ocelObjects.sinkTo(KafkaBpmSink.createOcelObjectSink());
