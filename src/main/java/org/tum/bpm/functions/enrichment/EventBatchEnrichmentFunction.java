@@ -68,7 +68,7 @@ public class EventBatchEnrichmentFunction
         if (fieldBuffer == null)
             fieldBuffer = new TreeSet<IoTMessageSchema>();
         fieldBuffer.add(iotMessage);
-        if (fieldBuffer.size() > 5) {
+        if (fieldBuffer.size() > 10) {
             fieldBuffer.pollFirst(); // Remove to keep at most the last 5 measurements
         }
         this.measurementBuffer.put(iotMessage.getPayload().getVarName(), fieldBuffer);
@@ -106,15 +106,14 @@ public class EventBatchEnrichmentFunction
         }
         this.eventBuffer.clear();
 
-        // TODO: don't clean the latest measurement
-
-        Instant waterMarkTime = Instant.ofEpochMilli(ctx.timerService().currentWatermark());
-        IoTMessageSchema dummyMeasurement = new IoTMessageSchema();
-        dummyMeasurement.setPayload(new CSIMeasurement());
-        dummyMeasurement.getPayload().setTimestampUtc(waterMarkTime);
-        for (Map.Entry<String, TreeSet<IoTMessageSchema>> fieldBuffer : this.measurementBuffer.entries()) {
-            fieldBuffer.getValue().headSet(dummyMeasurement, false).clear();
-            this.measurementBuffer.put(fieldBuffer.getKey(), fieldBuffer.getValue());
-        }
+        // Not needed any more since we limit the buffer size when we ingest
+        // Instant waterMarkTime = Instant.ofEpochMilli(ctx.timerService().currentWatermark());
+        // IoTMessageSchema dummyMeasurement = new IoTMessageSchema();
+        // dummyMeasurement.setPayload(new CSIMeasurement());
+        // dummyMeasurement.getPayload().setTimestampUtc(waterMarkTime);
+        // for (Map.Entry<String, TreeSet<IoTMessageSchema>> fieldBuffer : this.measurementBuffer.entries()) {
+        //     fieldBuffer.getValue().headSet(dummyMeasurement, false).clear();
+        //     this.measurementBuffer.put(fieldBuffer.getKey(), fieldBuffer.getValue());
+        // }
     }
 }
