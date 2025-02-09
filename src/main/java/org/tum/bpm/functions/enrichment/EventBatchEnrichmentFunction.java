@@ -60,15 +60,18 @@ public class EventBatchEnrichmentFunction
     }
 
     @Override
-    public void processElement1(IoTMessageSchema value,
+    public void processElement1(IoTMessageSchema iotMessage,
             KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent, EnrichedEvent>.Context ctx,
             Collector<EnrichedEvent> out) throws Exception {
 
-        TreeSet<IoTMessageSchema> fieldBuffer = this.measurementBuffer.get(value.getPayload().getVarName());
+        TreeSet<IoTMessageSchema> fieldBuffer = this.measurementBuffer.get(iotMessage.getPayload().getVarName());
         if (fieldBuffer == null)
             fieldBuffer = new TreeSet<IoTMessageSchema>();
-        fieldBuffer.add(value);
-        this.measurementBuffer.put(value.getPayload().getVarName(), fieldBuffer);
+        fieldBuffer.add(iotMessage);
+        if (fieldBuffer.size() > 5) {
+            fieldBuffer.pollFirst(); // Remove to keep at most the last 5 measurements
+        }
+        this.measurementBuffer.put(iotMessage.getPayload().getVarName(), fieldBuffer);
     }
 
     @Override
