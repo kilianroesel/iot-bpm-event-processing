@@ -17,8 +17,4 @@ public class OcelEvent {
     private Instant time;
     private List<OcelAttribute> attributes;
     private List<OcelRelationship> relationships;
-
-    public String getCollection() {
-        return "hallo";
-    }
 }
