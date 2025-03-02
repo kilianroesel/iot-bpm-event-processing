@@ -21,6 +21,11 @@ import org.apache.flink.util.concurrent.ExecutorThreadFactory;
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.CreateCollectionOptions;
+import com.mongodb.client.model.TimeSeriesGranularity;
+import com.mongodb.client.model.TimeSeriesOptions;
 import com.mongodb.client.model.WriteModel;
 import org.bson.BsonDocument;
 import org.slf4j.Logger;
@@ -44,7 +49,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * @param <IN> The type of the input elements.
  */
 @Internal
-public class DynamicMongoWriter<IN> implements SinkWriter<DynamicMongoDocument<IN>> {
+public class DynamicMongoWriter<IN> implements SinkWriter<MetaDocument<IN>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(DynamicMongoWriter.class);
 
@@ -54,11 +59,11 @@ public class DynamicMongoWriter<IN> implements SinkWriter<DynamicMongoDocument<I
     private final MongoSinkContext sinkContext;
     private final MailboxExecutor mailboxExecutor;
     private final boolean flushOnCheckpoint;
-    // private final List<WriteModel<BsonDocument>> bulkRequests = new ArrayList<>();
+    // private final List<WriteModel<BsonDocument>> bulkRequests = new
+    // ArrayList<>();
     private final Map<String, List<WriteModel<BsonDocument>>> bulkRequests = new HashMap<>();
     // private final Collector<WriteModel<BsonDocument>> collector;
     private final Map<String, Collector<WriteModel<BsonDocument>>> collectors = new HashMap<>();
-
 
     private final Counter numRecordsOut;
     private final MongoClient mongoClient;
@@ -76,67 +81,65 @@ public class DynamicMongoWriter<IN> implements SinkWriter<DynamicMongoDocument<I
 
     @SuppressWarnings("deprecation")
     public DynamicMongoWriter(
-             MongoConnectionOptions connectionOptions,
-             MongoWriteOptions writeOptions,
-             boolean flushOnCheckpoint,
-             Sink.InitContext initContext,
-             MongoSerializationSchema<IN> serializationSchema) {
-         this.connectionOptions = checkNotNull(connectionOptions);
-         this.writeOptions = checkNotNull(writeOptions);
-         this.serializationSchema = checkNotNull(serializationSchema);
-         this.flushOnCheckpoint = flushOnCheckpoint;
-         this.batchIntervalMs = writeOptions.getBatchIntervalMs();
-         this.batchSize = writeOptions.getBatchSize();
- 
-         checkNotNull(initContext);
-         this.mailboxExecutor = checkNotNull(initContext.getMailboxExecutor());
- 
-         SinkWriterMetricGroup metricGroup = checkNotNull(initContext.metricGroup());
-         metricGroup.setCurrentSendTimeGauge(() -> ackTime - lastSendTime);
- 
-         this.numRecordsOut = metricGroup.getNumRecordsSendCounter();
-        //  this.collector = new ListCollector<>(this.bulkRequests);
+            MongoConnectionOptions connectionOptions,
+            MongoWriteOptions writeOptions,
+            boolean flushOnCheckpoint,
+            Sink.InitContext initContext,
+            MongoSerializationSchema<IN> serializationSchema) {
+        this.connectionOptions = checkNotNull(connectionOptions);
+        this.writeOptions = checkNotNull(writeOptions);
+        this.serializationSchema = checkNotNull(serializationSchema);
+        this.flushOnCheckpoint = flushOnCheckpoint;
+        this.batchIntervalMs = writeOptions.getBatchIntervalMs();
+        this.batchSize = writeOptions.getBatchSize();
 
-         // Initialize the serialization schema.
-         this.sinkContext = new DefaultMongoSinkContext(initContext, writeOptions);
-         try {
-            SerializationSchema.InitializationContext initializationContext =
-                     initContext.asSerializationSchemaInitializationContext();
-             serializationSchema.open(initializationContext, sinkContext, writeOptions);
-         } catch (Exception e) {
-             throw new FlinkRuntimeException("Failed to open the MongoEmitter", e);
-         }
- 
-         // Initialize the mongo client.
-         this.mongoClient = MongoClients.create(connectionOptions.getUri());
- 
-         boolean flushOnlyOnCheckpoint = batchIntervalMs == -1 && batchSize == -1;
- 
-         if (!flushOnlyOnCheckpoint && batchIntervalMs > 0) {
-             this.scheduler =
-                     Executors.newScheduledThreadPool(1, new ExecutorThreadFactory("mongo-writer"));
- 
-             this.scheduledFuture =
-                     this.scheduler.scheduleWithFixedDelay(
-                             () -> {
-                                 synchronized (DynamicMongoWriter.this) {
-                                     if (!closed && isOverMaxBatchIntervalLimit()) {
-                                         try {
-                                             doBulkWrite();
-                                         } catch (Exception e) {
-                                             flushException = e;
-                                         }
-                                     }
-                                 }
-                             },
-                             batchIntervalMs,
-                             batchIntervalMs,
-                             TimeUnit.MILLISECONDS);
-         }
-     }
+        checkNotNull(initContext);
+        this.mailboxExecutor = checkNotNull(initContext.getMailboxExecutor());
+
+        SinkWriterMetricGroup metricGroup = checkNotNull(initContext.metricGroup());
+        metricGroup.setCurrentSendTimeGauge(() -> ackTime - lastSendTime);
+
+        this.numRecordsOut = metricGroup.getNumRecordsSendCounter();
+        // this.collector = new ListCollector<>(this.bulkRequests);
+
+        // Initialize the serialization schema.
+        this.sinkContext = new DefaultMongoSinkContext(initContext, writeOptions);
+        try {
+            SerializationSchema.InitializationContext initializationContext = initContext
+                    .asSerializationSchemaInitializationContext();
+            serializationSchema.open(initializationContext, sinkContext, writeOptions);
+        } catch (Exception e) {
+            throw new FlinkRuntimeException("Failed to open the MongoEmitter", e);
+        }
+
+        // Initialize the mongo client.
+        this.mongoClient = MongoClients.create(connectionOptions.getUri());
+
+        boolean flushOnlyOnCheckpoint = batchIntervalMs == -1 && batchSize == -1;
+
+        if (!flushOnlyOnCheckpoint && batchIntervalMs > 0) {
+            this.scheduler = Executors.newScheduledThreadPool(1, new ExecutorThreadFactory("mongo-writer"));
+
+            this.scheduledFuture = this.scheduler.scheduleWithFixedDelay(
+                    () -> {
+                        synchronized (DynamicMongoWriter.this) {
+                            if (!closed && isOverMaxBatchIntervalLimit()) {
+                                try {
+                                    doBulkWrite();
+                                } catch (Exception e) {
+                                    flushException = e;
+                                }
+                            }
+                        }
+                    },
+                    batchIntervalMs,
+                    batchIntervalMs,
+                    TimeUnit.MILLISECONDS);
+        }
+    }
 
     @Override
-    public synchronized void write(DynamicMongoDocument<IN> element, Context context)
+    public synchronized void write(MetaDocument<IN> element, Context context)
             throws IOException, InterruptedException {
         checkFlushException();
 
@@ -145,12 +148,12 @@ public class DynamicMongoWriter<IN> implements SinkWriter<DynamicMongoDocument<I
             mailboxExecutor.yield();
         }
         numRecordsOut.inc();
-        Collector<WriteModel<BsonDocument>> collector = this.collectors.get(element.getCollection());
+        Collector<WriteModel<BsonDocument>> collector = this.collectors.get(element.getDevice());
         if (collector == null) {
             List<WriteModel<BsonDocument>> bulkRequests = new ArrayList<>();
-            this.bulkRequests.put(element.getCollection(), bulkRequests);
+            this.bulkRequests.put(element.getDevice(), bulkRequests);
             collector = new ListCollector<>(bulkRequests);
-            this.collectors.put(element.getCollection(), collector);
+            this.collectors.put(element.getDevice(), collector);
         }
         WriteModel<BsonDocument> writeModel = serializationSchema.serialize(element.getDocument(), sinkContext);
         collector.collect(writeModel);
@@ -208,11 +211,21 @@ public class DynamicMongoWriter<IN> implements SinkWriter<DynamicMongoDocument<I
         for (int i = 0; i <= maxRetries; i++) {
             try {
                 lastSendTime = System.currentTimeMillis();
-                for (Map.Entry<String,List<WriteModel<BsonDocument>>> entry : this.bulkRequests.entrySet()) {
+                for (Map.Entry<String, List<WriteModel<BsonDocument>>> entry : this.bulkRequests.entrySet()) {
                     if (entry.getValue().isEmpty()) {
                         // no records to write
                         continue;
                     }
+                    MongoDatabase mongoDatabase = mongoClient.getDatabase(connectionOptions.getDatabase());
+                    MongoCollection<BsonDocument> mongoCollection = mongoDatabase.getCollection(entry.getKey(), BsonDocument.class);
+                    if (mongoCollection == null) {
+                        TimeSeriesOptions timeSeriesOptions = new TimeSeriesOptions("timestamp")
+                                .metaField("deviceId")
+                                .granularity(TimeSeriesGranularity.MINUTES);
+                        CreateCollectionOptions options = new CreateCollectionOptions().timeSeriesOptions(timeSeriesOptions);
+                        mongoDatabase.createCollection(entry.getKey(), options);
+                    }
+
                     mongoClient
                             .getDatabase(connectionOptions.getDatabase())
                             .getCollection(entry.getKey(), BsonDocument.class)

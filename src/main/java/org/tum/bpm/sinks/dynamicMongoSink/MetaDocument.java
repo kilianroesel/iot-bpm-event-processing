@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class DynamicMongoDocument<T> {
-    private String collection;
+public class MetaDocument<T> {
+    private String device;
     private T document;
 }

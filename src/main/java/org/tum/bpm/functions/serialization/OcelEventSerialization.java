@@ -9,12 +9,12 @@ import org.tum.bpm.schemas.CorrelatedEvent;
 import org.tum.bpm.schemas.ocel.OcelAttribute;
 import org.tum.bpm.schemas.ocel.OcelEvent;
 import org.tum.bpm.schemas.ocel.OcelRelationship;
-import org.tum.bpm.sinks.dynamicMongoSink.DynamicMongoDocument;
+import org.tum.bpm.sinks.dynamicMongoSink.MetaDocument;
 
-public class OcelEventSerialization implements MapFunction<CorrelatedEvent, DynamicMongoDocument<OcelEvent>> {
+public class OcelEventSerialization implements MapFunction<CorrelatedEvent, MetaDocument<OcelEvent>> {
 
     @Override
-    public DynamicMongoDocument<OcelEvent> map(CorrelatedEvent event) throws Exception {
+    public MetaDocument<OcelEvent> map(CorrelatedEvent event) throws Exception {
         String eventId = UUID.randomUUID().toString();
         String eventName =  event.getEvent().getRule().getEventName();
         Instant eventTime = event.getEvent().getIotMessage().getPayload().getTimestampUtc();
@@ -27,7 +27,7 @@ public class OcelEventSerialization implements MapFunction<CorrelatedEvent, Dyna
         eventTime, eventAttributes,
         ocelRelationships);
 
-        DynamicMongoDocument<OcelEvent> wrappedOcelEvent = new DynamicMongoDocument<>(collection, ocelEvent);
+        MetaDocument<OcelEvent> wrappedOcelEvent = new MetaDocument<>(collection, ocelEvent);
         return wrappedOcelEvent; 
     }
 }

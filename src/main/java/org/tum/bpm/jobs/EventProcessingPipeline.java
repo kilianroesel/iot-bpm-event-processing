@@ -32,7 +32,7 @@ import org.tum.bpm.schemas.rules.Rule;
 import org.tum.bpm.schemas.rules.RuleControl;
 import org.tum.bpm.sinks.KafkaBpmSink;
 import org.tum.bpm.sinks.MongoBpmSink;
-import org.tum.bpm.sinks.dynamicMongoSink.DynamicMongoDocument;
+import org.tum.bpm.sinks.dynamicMongoSink.MetaDocument;
 import org.tum.bpm.sources.MeasurementKafkaSource;
 import org.tum.bpm.sources.RulesSource;
 
@@ -119,12 +119,13 @@ public class EventProcessingPipeline {
         DataStream<Resource> resourceStream = correlatedEvents
                 .getSideOutput(EventResourceCorrelationFunction.RESOURCE_OUTPUT_TAG);
 
-        DataStream<DynamicMongoDocument<OcelEvent>> ocelEvents = correlatedEvents.map(new OcelEventSerialization()).name("Ocel-Event Stream");
+        DataStream<MetaDocument<OcelEvent>> ocelEvents = correlatedEvents.map(new OcelEventSerialization()).name("Ocel-Event Stream");
         DataStream<OcelObject> ocelObjects = resourceStream.connect(resourceNameRuleBroadcast)
                 .process(new OcelObjectSerialization()).name("Ocel-Object Stream");
 
+        ocelEvents.sinkTo(KafkaBpmSink.createOcelEventSink());
         ocelEvents.sinkTo(MongoBpmSink.createOcelEventSink());
-        ocelObjects.sinkTo(KafkaBpmSink.createOcelObjectSink());
+        // ocelObjects.sinkTo(KafkaBpmSink.createOcelObjectSink());
         env.execute("Event processing pipeline");
     }
 }

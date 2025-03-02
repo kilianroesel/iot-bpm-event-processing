@@ -39,7 +39,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * @param <IN> Type of the elements handled by this sink
  */
 @PublicEvolving
-public class DynamicMongoSink<IN> implements Sink<DynamicMongoDocument<IN>> {
+public class DynamicMongoSink<IN> implements Sink<MetaDocument<IN>> {
 
     private static final long serialVersionUID = 1L;
 
@@ -63,7 +63,7 @@ public class DynamicMongoSink<IN> implements Sink<DynamicMongoDocument<IN>> {
     }
 
     @Override
-    public SinkWriter<DynamicMongoDocument<IN>> createWriter(@SuppressWarnings("deprecation") InitContext context) {
+    public SinkWriter<MetaDocument<IN>> createWriter(@SuppressWarnings("deprecation") InitContext context) {
         return new DynamicMongoWriter<>(
                 connectionOptions,
                 writeOptions,
