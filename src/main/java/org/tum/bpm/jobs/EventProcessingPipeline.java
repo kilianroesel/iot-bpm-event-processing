@@ -125,7 +125,7 @@ public class EventProcessingPipeline {
 
         ocelEvents.sinkTo(KafkaBpmSink.createOcelEventSink());
         ocelEvents.sinkTo(MongoBpmSink.createOcelEventSink());
-        // ocelObjects.sinkTo(KafkaBpmSink.createOcelObjectSink());
+        ocelObjects.sinkTo(KafkaBpmSink.createOcelObjectSink());
         env.execute("Event processing pipeline");
     }
 }

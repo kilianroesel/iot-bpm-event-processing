@@ -38,13 +38,13 @@ public class KafkaBpmSink {
         return sink;
     }
 
-    public static KafkaSink<MetaDocument<OcelObject>> createOcelObjectSink() throws IOException {
-        KafkaSink<MetaDocument<OcelObject>> sink = KafkaSink.<MetaDocument<OcelObject>>builder()
+    public static KafkaSink<OcelObject> createOcelObjectSink() throws IOException {
+        KafkaSink<OcelObject> sink = KafkaSink.<OcelObject>builder()
                 .setBootstrapServers(kafkaConfiguration.getProperty("bootstrap.servers"))
                 .setKafkaProducerConfig(kafkaConfiguration.getProperties())
                 .setRecordSerializer(KafkaRecordSerializationSchema.builder()
                         .setTopic(OCEL_OBJECT_TOPIC)
-                        .setValueSerializationSchema(new JsonSerializationSchema<MetaDocument<OcelObject>>(
+                        .setValueSerializationSchema(new JsonSerializationSchema<OcelObject>(
                                 () -> new ObjectMapper()
                                         .registerModule(new JavaTimeModule())))
                         .build())
