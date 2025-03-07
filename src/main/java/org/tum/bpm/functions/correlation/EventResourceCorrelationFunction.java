@@ -76,7 +76,7 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
         // Correlate views along equipmentPath
         String[] equipment = equipmentPath.split(",");
 
-        for (int i = equipment.length - 1; i > 1; i--) {
+        for (int i = 0; i < equipment.length; i++) {
             String currentPath = String.join(",", java.util.Arrays.copyOfRange(equipment, 0, i)) + ",";
             Map<String, Resource> views = this.viewState.get(currentPath);
             if (views != null) {
