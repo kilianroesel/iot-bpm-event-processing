@@ -31,6 +31,7 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
             BasicTypeInfo.STRING_TYPE_INFO,
             TypeInformation.of(new TypeHint<Queue<Resource>>() {
             }));
+    // Maps equipmentPath to view to view state
     private transient MapState<String, Map<String, Resource>> viewState;
     private MapStateDescriptor<String, Map<String, Resource>> viewStateDescriptor = new MapStateDescriptor<>(
             "viewState",
@@ -76,8 +77,8 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
         // Correlate views along equipmentPath
         String[] equipment = equipmentPath.split(",");
 
-        for (int i = 0; i < equipment.length; i++) {
-            String currentPath = String.join(",", java.util.Arrays.copyOfRange(equipment, 0, i)) + ",";
+        for (int i = 1; i < equipment.length; i++) {
+            String currentPath = String.join(",", java.util.Arrays.copyOfRange(equipment, 0, i+1)) + ",";
             Map<String, Resource> views = this.viewState.get(currentPath);
             if (views != null) {
                 for (Resource resource : views.values()) {
