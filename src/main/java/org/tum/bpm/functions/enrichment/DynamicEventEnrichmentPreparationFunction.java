@@ -55,7 +55,7 @@ public class DynamicEventEnrichmentPreparationFunction extends BroadcastProcessF
                     rules = new ArrayList<>();
                 }
                 // Removes an old rule by the field
-                rules.removeIf(currentRule -> currentRule.getField().equals(rule.getField()));
+                rules.removeIf(currentRule -> currentRule.getRuleId().equals(rule.getRuleId()));
                 rules.add(rule);
                 broadcastState.put(rule.getViewId(), rules);
                 break;
