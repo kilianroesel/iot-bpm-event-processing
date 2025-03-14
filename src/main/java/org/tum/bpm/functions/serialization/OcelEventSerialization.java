@@ -18,6 +18,7 @@ public class OcelEventSerialization implements MapFunction<CorrelatedEvent, Meta
         String eventId = UUID.randomUUID().toString();
         String eventName =  event.getEvent().getRule().getEventName();
         Instant eventTime = event.getEvent().getIotMessage().getPayload().getTimestampUtc();
+        Instant ingestionTime = event.getEvent().getIotMessage().getIngestionTime();
         List<OcelAttribute> eventAttributes = event.getEnrichment();
         List<OcelRelationship> ocelRelationships = event.getCorrelation();
 
@@ -27,7 +28,7 @@ public class OcelEventSerialization implements MapFunction<CorrelatedEvent, Meta
         eventTime, eventAttributes,
         ocelRelationships);
 
-        MetaDocument<OcelEvent> wrappedOcelEvent = new MetaDocument<>(collection, ocelEvent);
+        MetaDocument<OcelEvent> wrappedOcelEvent = new MetaDocument<>(collection, eventTime, ingestionTime, ocelEvent);
         return wrappedOcelEvent; 
     }
 }

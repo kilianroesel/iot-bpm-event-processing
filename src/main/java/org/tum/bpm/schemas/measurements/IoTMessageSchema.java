@@ -5,16 +5,19 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonPro
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
 @JsonPropertyOrder({ "schemaVersion", "payloadType", "messageId", "correlationId",
         "messageTs", "payload" })
 public class IoTMessageSchema implements Comparable<IoTMessageSchema> {
+
+    public IoTMessageSchema() {
+        this.ingestionTime = Instant.now(); // Capture deserialization time
+    }
+
     @JsonProperty("schemaVersion")
     private String schemaVersion;
 
@@ -32,6 +35,9 @@ public class IoTMessageSchema implements Comparable<IoTMessageSchema> {
     
     @JsonProperty("payload")
     private CSIMeasurement payload;
+
+    private Instant ingestionTime;
+
 
     @Override
     public int compareTo(IoTMessageSchema o) {

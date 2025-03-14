@@ -1,5 +1,6 @@
 package org.tum.bpm.functions.enrichment;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
@@ -76,7 +77,7 @@ public class EventBatchEnrichmentFunction
             KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent, EnrichedEvent>.Context ctx,
             Collector<EnrichedEvent> out) throws Exception {
         this.eventBuffer.add(value);
-        ctx.timerService().registerEventTimeTimer(ctx.timestamp());
+        ctx.timerService().registerEventTimeTimer(ctx.timestamp()+1000);
     }
 
     @Override
@@ -84,9 +85,16 @@ public class EventBatchEnrichmentFunction
             Collector<EnrichedEvent> out)
             throws Exception {
 
+        List<EquipmentListEvent> remainingEvents = new ArrayList<>();
         // For each buffered event enrich the event with attributes according to the
         // enrichment rules
         for (EquipmentListEvent event : this.eventBuffer.get()) {
+            Instant timerInstant = Instant.ofEpochMilli(ctx.timestamp());
+            if (event.getBaseEvent().getIotMessage().getPayload().getTimestampUtc().compareTo(timerInstant) > 0) {
+                remainingEvents.add(event);
+                continue;
+            }
+
             List<OcelAttribute> enrichment = new ArrayList<OcelAttribute>();
             // Map<String, String> enrichment = new HashMap<>();
             if (event.getEnrichmentRules() != null) {
@@ -102,15 +110,6 @@ public class EventBatchEnrichmentFunction
             out.collect(new EnrichedEvent(event.getBaseEvent(), enrichment));
         }
         this.eventBuffer.clear();
-
-        // Not needed any more since we limit the buffer size when we ingest
-        // Instant waterMarkTime = Instant.ofEpochMilli(ctx.timerService().currentWatermark());
-        // IoTMessageSchema dummyMeasurement = new IoTMessageSchema();
-        // dummyMeasurement.setPayload(new CSIMeasurement());
-        // dummyMeasurement.getPayload().setTimestampUtc(waterMarkTime);
-        // for (Map.Entry<String, TreeSet<IoTMessageSchema>> fieldBuffer : this.measurementBuffer.entries()) {
-        //     fieldBuffer.getValue().headSet(dummyMeasurement, false).clear();
-        //     this.measurementBuffer.put(fieldBuffer.getKey(), fieldBuffer.getValue());
-        // }
+        this.eventBuffer.update(remainingEvents);
     }
 }
