@@ -59,11 +59,13 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
         // Default correlations, correlating device Id, machine Id, etc.
         String equipmentId = event.getEvent().getRule().getEquipmentId();
         String equipmentPath = event.getEvent().getRule().getEquipmentPath();
+        String viewId = event.getEvent().getRule().getViewId();
+
         correlations.add(new OcelRelationship(equipmentId, "equipmentId"));
         correlations.add(new OcelRelationship(equipmentPath, "equipmentPath"));
+        correlations.add(new OcelRelationship(viewId, "viewId"));
 
         // Update view state
-        String viewId = event.getEvent().getRule().getViewId();
         if (viewId != null) {
             Map<String, Resource> views = this.viewState.get(equipmentPath);
             if (views == null) {
