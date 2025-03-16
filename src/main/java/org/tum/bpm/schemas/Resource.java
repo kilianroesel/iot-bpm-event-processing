@@ -1,5 +1,6 @@
 package org.tum.bpm.schemas;
 
+import java.time.Instant;
 import java.util.List;
 
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
@@ -22,4 +23,8 @@ public class Resource {
 
     @JsonProperty("enrichment")
     private List<OcelAttribute> enrichment;
+
+    // After this watermark the resource is not valid anymore
+    @JsonProperty("maxTimestamp")
+    private Instant maxTimestamp;
 }

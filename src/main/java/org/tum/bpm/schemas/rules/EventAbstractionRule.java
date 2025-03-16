@@ -51,7 +51,7 @@ public class EventAbstractionRule extends Rule {
     @Data
     @NoArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonPropertyOrder({"resourceModelId", "interactionType", "qualifier"})
+    @JsonPropertyOrder({"resourceModelId", "interactionType", "qualifier", "quantity", "lifespan"})
     public static class EventResourceRelation {
 
         @JsonProperty("resourceModelId")
@@ -62,5 +62,11 @@ public class EventAbstractionRule extends Rule {
 
         @JsonProperty("qualifier")
         private String qualifier;
+
+        @JsonProperty("quantity")
+        private Integer quantity;
+
+        @JsonProperty("lifespan")
+        private Integer lifespan;
     }
 }
