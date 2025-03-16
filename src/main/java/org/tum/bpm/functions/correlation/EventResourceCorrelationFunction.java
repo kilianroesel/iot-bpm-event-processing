@@ -3,6 +3,7 @@ package org.tum.bpm.functions.correlation;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -100,15 +101,30 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
         List<EventResourceRelation> correlationRules = event.getEvent().getRule().getRelations();
         for (EventResourceRelation correlationRule : correlationRules) {
             Queue<Resource> resourceQueue = this.resourceQueues.get(correlationRule.getResourceModelId());
+
             if (resourceQueue == null) {
                 resourceQueue = new LinkedList<>();
             }
             Resource resource;
             String resourceId;
+            String edgeDeviceId = event.getEvent().getIotMessage().getPayload().getEdgeDeviceId();
             Instant eventTime = event.getEvent().getIotMessage().getPayload().getTimestampUtc();
             Instant validity = Instant.MAX;
             if (correlationRule.getLifespan() != null) {
                 validity = eventTime.plusSeconds(correlationRule.getLifespan());
+            }
+
+            // Remove expired resources
+            LinkedList<Resource> linkedList = (LinkedList<Resource>) resourceQueue;
+            Iterator<Resource> iterator = linkedList.iterator();
+            while (iterator.hasNext()) {
+                Resource expResource = iterator.next();
+                if (eventTime.isAfter(expResource.getMaxTimestamp())) {
+                    iterator.remove();
+                    ctx.output(ALARM_OUTPUT_TAG,
+                            new Alarm("Resource is expired", "Resource is expired: (edgeDeviceId: " + edgeDeviceId +  ", resourceModelId: " + expResource.getResourceModelId() + ")", eventTime));
+                    continue;
+                }
             }
 
             switch (correlationRule.getInteractionType()) {
@@ -116,7 +132,7 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
                     if (correlationRule.getQuantity() != null) {
                         for (int i = 0; i < correlationRule.getQuantity(); i++) {
                             resourceId = UUID.randomUUID().toString();
-                            correlations.add(new OcelRelationship(correlationRule.getQualifier(), resourceId));
+                            correlations.add(new OcelRelationship(resourceId, correlationRule.getQualifier()));
                             resource = new Resource(resourceId, correlationRule.getResourceModelId(),
                                     event.getEnrichment(), validity);
                             resourceQueue.add(resource);
@@ -126,8 +142,9 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
                     break;
                 case "PROVIDE":
                     resourceId = UUID.randomUUID().toString();
-                    correlations.add(new OcelRelationship(correlationRule.getQualifier(), resourceId));
-                    resource = new Resource(resourceId, correlationRule.getResourceModelId(), event.getEnrichment(), validity);
+                    correlations.add(new OcelRelationship(resourceId, correlationRule.getQualifier()));
+                    resource = new Resource(resourceId, correlationRule.getResourceModelId(), event.getEnrichment(),
+                            validity);
                     resourceQueue.clear();
                     resourceQueue.add(resource);
                     ctx.output(RESOURCE_OUTPUT_TAG, resource);
@@ -137,30 +154,27 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
                         for (int i = 0; i < correlationRule.getQuantity(); i++) {
                             resource = resourceQueue.poll();
                             if (resource == null) {
-                                ctx.output(ALARM_OUTPUT_TAG, new Alarm("Could not consume resource. No resource available.", eventTime));
-                                continue;
-                            }
-                            if (eventTime.isAfter(resource.getMaxTimestamp())) {
-                                ctx.output(ALARM_OUTPUT_TAG, new Alarm("Could not consume resource. Resource is expired.", eventTime));
-                                i--;
+                                ctx.output(ALARM_OUTPUT_TAG,
+                                        new Alarm("Could not consume resource. No resource available.",
+                                        "Could not consume resource. No resource available: (edgeDeviceId: " + edgeDeviceId +  ", resourceModelId: " + correlationRule.getResourceModelId() + ")",
+                                        eventTime));
                                 continue;
                             }
                             correlations.add(
-                                    new OcelRelationship(correlationRule.getQualifier(), resource.getResourceId()));
+                                    new OcelRelationship(resource.getResourceId(), correlationRule.getQualifier()));
                         }
                     }
                     break;
                 case "USE": // Does not remove the resource
                     resource = resourceQueue.peek();
                     if (resource == null) {
-                        ctx.output(ALARM_OUTPUT_TAG, new Alarm("Could not use resource. No resource available", eventTime));
+                        ctx.output(ALARM_OUTPUT_TAG,
+                                        new Alarm("Could not use resource. No resource available.",
+                                        "Could not use resource. No resource available: (edgeDeviceId: " + edgeDeviceId +  ", resourceModelId: " + correlationRule.getResourceModelId() + ")",
+                                        eventTime));
                         continue;
                     }
-                    if (eventTime.isAfter(resource.getMaxTimestamp())) {
-                        ctx.output(ALARM_OUTPUT_TAG, new Alarm("Could not consume resource. Resource is expired.", eventTime));
-                        continue;
-                    }
-                    correlations.add(new OcelRelationship(correlationRule.getQualifier(), resource.getResourceId()));
+                    correlations.add(new OcelRelationship(resource.getResourceId(), correlationRule.getQualifier()));
                 default:
                     continue;
             }
