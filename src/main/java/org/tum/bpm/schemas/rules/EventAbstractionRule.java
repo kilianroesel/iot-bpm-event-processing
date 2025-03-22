@@ -60,8 +60,8 @@ public class EventAbstractionRule extends Rule {
         @JsonProperty("interactionType")
         private String interactionType;
 
-        @JsonProperty("qualifier")
-        private String qualifier;
+        // @JsonProperty("qualifier")
+        // private String qualifier;
 
         @JsonProperty("quantity")
         private Integer quantity;

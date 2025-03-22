@@ -64,11 +64,15 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
         List<OcelRelationship> correlations = new ArrayList<>();
 
         // Default correlations, correlating device Id, machine Id, etc.
+        String deviceId = event.getEvent().getIotMessage().getPayload().getEdgeDeviceId();
+        String machineId = event.getEvent().getRule().getScopeId();
         String equipmentId = event.getEvent().getRule().getEquipmentId();
         String equipmentPath = event.getEvent().getRule().getEquipmentPath();
         String viewId = event.getEvent().getRule().getViewId();
 
+        correlations.add(new OcelRelationship(deviceId, "lineId"));
         correlations.add(new OcelRelationship(equipmentId, "equipmentId"));
+        correlations.add(new OcelRelationship(machineId, "machineId"));
         correlations.add(new OcelRelationship(equipmentPath, "equipmentPath"));
         correlations.add(new OcelRelationship(viewId, "viewId"));
 
@@ -132,7 +136,7 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
                     if (correlationRule.getQuantity() != null) {
                         for (int i = 0; i < correlationRule.getQuantity(); i++) {
                             resourceId = UUID.randomUUID().toString();
-                            correlations.add(new OcelRelationship(resourceId, correlationRule.getQualifier()));
+                            correlations.add(new OcelRelationship(resourceId, correlationRule.getResourceModelId()));
                             resource = new Resource(resourceId, correlationRule.getResourceModelId(),
                                     event.getEnrichment(), validity);
                             resourceQueue.add(resource);
@@ -142,13 +146,30 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
                     break;
                 case "PROVIDE":
                     resourceId = UUID.randomUUID().toString();
-                    correlations.add(new OcelRelationship(resourceId, correlationRule.getQualifier()));
+                    correlations.add(new OcelRelationship(resourceId, correlationRule.getResourceModelId()));
                     resource = new Resource(resourceId, correlationRule.getResourceModelId(), event.getEnrichment(),
                             validity);
                     resourceQueue.clear();
                     resourceQueue.add(resource);
                     ctx.output(RESOURCE_OUTPUT_TAG, resource);
                     break;
+                case "REFERENCE":
+                    if (correlationRule.getQuantity() != null) {
+                        for (int i = 0; i < correlationRule.getQuantity(); i++) {
+                            resource = resourceQueue.poll();
+                            if (resource == null) {
+                                ctx.output(ALARM_OUTPUT_TAG,
+                                        new Alarm("Could not reference resource. No resource available.",
+                                        "Could not reference resource. No resource available: (edgeDeviceId: " + edgeDeviceId +  ", resourceModelId: " + correlationRule.getResourceModelId() + ")",
+                                        eventTime));
+                                continue;
+                            }
+                            correlations.add(
+                                    new OcelRelationship(resource.getResourceId(), correlationRule.getResourceModelId()));
+                            resourceQueue.add(resource);
+                            ctx.output(RESOURCE_OUTPUT_TAG, resource);
+                        }
+                    }
                 case "CONSUME":
                     if (correlationRule.getQuantity() != null) {
                         for (int i = 0; i < correlationRule.getQuantity(); i++) {
@@ -161,11 +182,11 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
                                 continue;
                             }
                             correlations.add(
-                                    new OcelRelationship(resource.getResourceId(), correlationRule.getQualifier()));
+                                    new OcelRelationship(resource.getResourceId(), correlationRule.getResourceModelId()));
                         }
                     }
                     break;
-                case "USE": // Does not remove the resource
+                case "USE": // Does not remove the resource from the queue
                     resource = resourceQueue.peek();
                     if (resource == null) {
                         ctx.output(ALARM_OUTPUT_TAG,
@@ -174,7 +195,7 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
                                         eventTime));
                         continue;
                     }
-                    correlations.add(new OcelRelationship(resource.getResourceId(), correlationRule.getQualifier()));
+                    correlations.add(new OcelRelationship(resource.getResourceId(), correlationRule.getResourceModelId()));
                 default:
                     continue;
             }
