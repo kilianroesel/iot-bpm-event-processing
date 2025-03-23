@@ -165,7 +165,7 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
                                 continue;
                             }
                             correlations.add(
-                                    new OcelRelationship(resource.getResourceId(), correlationRule.getResourceModelId()));
+                                    new OcelRelationship(resource.getResourceId(), resource.getResourceModelId()));
                             resourceQueue.add(resource);
                             ctx.output(RESOURCE_OUTPUT_TAG, resource);
                         }
