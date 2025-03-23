@@ -79,6 +79,7 @@ public class EventProcessingPipeline {
                 .process(new DynamicScopeFunction())
                 .name("Scoped Stream");
 
+
         // 1. Key by scope, edge device id and variable name -> each measurement is now
         // uniquely
         // identifiable and interpretable
@@ -111,7 +112,7 @@ public class EventProcessingPipeline {
                         BasicTypeInfo.STRING_TYPE_INFO)
                 .process(new EventBatchEnrichmentFunction())
                 .name("Enriched-Event Stream");
-
+        
         SingleOutputStreamOperator<CorrelatedEvent> correlatedEvents = enrichedEvents
                 .keyBy(enrichedEvent -> enrichedEvent.getEvent()
                         .getIotMessage().getPayload().getEdgeDeviceId())

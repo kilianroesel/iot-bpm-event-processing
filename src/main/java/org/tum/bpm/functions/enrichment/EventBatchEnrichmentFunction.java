@@ -1,6 +1,5 @@
 package org.tum.bpm.functions.enrichment;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
@@ -77,7 +76,10 @@ public class EventBatchEnrichmentFunction
             KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent, EnrichedEvent>.Context ctx,
             Collector<EnrichedEvent> out) throws Exception {
         this.eventBuffer.add(value);
-        ctx.timerService().registerEventTimeTimer(ctx.timestamp()+1000);
+        System.out.println("Checking timestamps");
+        // System.out.println(value.getBaseEvent().getIotMessage().getPayload().getTimestampUtc().toEpochMilli()-ctx.timestamp());
+        System.out.println(ctx.timestamp()-ctx.timerService().currentWatermark());
+        ctx.timerService().registerEventTimeTimer(ctx.timerService().currentWatermark()+100);
     }
 
     @Override
@@ -89,12 +91,6 @@ public class EventBatchEnrichmentFunction
         // For each buffered event enrich the event with attributes according to the
         // enrichment rules
         for (EquipmentListEvent event : this.eventBuffer.get()) {
-            Instant timerInstant = Instant.ofEpochMilli(ctx.timestamp());
-            if (event.getBaseEvent().getIotMessage().getPayload().getTimestampUtc().compareTo(timerInstant) > 0) {
-                remainingEvents.add(event);
-                continue;
-            }
-
             List<OcelAttribute> enrichment = new ArrayList<OcelAttribute>();
             // Map<String, String> enrichment = new HashMap<>();
             if (event.getEnrichmentRules() != null) {
@@ -107,7 +103,7 @@ public class EventBatchEnrichmentFunction
                     }
                 }
             }
-            out.collect(new EnrichedEvent(event.getBaseEvent(), enrichment));
+            out.collect(new EnrichedEvent(event.getBaseEvent(), enrichment, event.getBaseEvent().getEventAbstractionTime()));
         }
         this.eventBuffer.clear();
         this.eventBuffer.update(remainingEvents);

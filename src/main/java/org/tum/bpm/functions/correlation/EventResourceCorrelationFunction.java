@@ -201,6 +201,6 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
             }
             resourceQueues.put(correlationRule.getResourceModelId(), resourceQueue);
         }
-        out.collect(new CorrelatedEvent(event.getEvent(), event.getEnrichment(), correlations));
+        out.collect(new CorrelatedEvent(event.getEvent(), event.getEnrichment(), correlations, event.getEventAbstractionTime(), event.getEventEnrichmentTime()));
     }
 }
