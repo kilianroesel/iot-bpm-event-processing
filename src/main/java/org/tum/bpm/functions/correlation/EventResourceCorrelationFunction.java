@@ -156,7 +156,24 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
                 case "REFERENCE":
                     if (correlationRule.getQuantity() != null) {
                         for (int i = 0; i < correlationRule.getQuantity(); i++) {
-                            resource = resourceQueue.poll();
+                            String referencedModelId = correlationRule.getReferenceModelId();
+                            if (referencedModelId == null) {
+                                ctx.output(ALARM_OUTPUT_TAG,
+                                        new Alarm("Could not reference resource. Rule does not contain reference modelId.",
+                                        "Could not reference resource. Rule does not contain reference modelId",
+                                        eventTime));
+                                continue;
+                            }
+                            Queue<Resource> referencedResourceQueue = this.resourceQueues.get(referencedModelId);
+                            if (referencedResourceQueue == null) {
+                                ctx.output(ALARM_OUTPUT_TAG,
+                                        new Alarm("Could not reference resource. ResourceQueue does not yet exist.",
+                                        "Could not reference resource. ResourceQueue does not yet exist: (edgeDeviceId: " + edgeDeviceId +  ", resourceModelId: " + correlationRule.getResourceModelId() + ")",
+                                        eventTime));
+                                continue;
+                            }
+
+                            resource = referencedResourceQueue.poll();
                             if (resource == null) {
                                 ctx.output(ALARM_OUTPUT_TAG,
                                         new Alarm("Could not reference resource. No resource available.",
