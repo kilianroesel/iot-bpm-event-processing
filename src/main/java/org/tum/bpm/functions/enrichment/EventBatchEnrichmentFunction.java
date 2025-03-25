@@ -76,9 +76,6 @@ public class EventBatchEnrichmentFunction
             KeyedCoProcessFunction<String, IoTMessageSchema, EquipmentListEvent, EnrichedEvent>.Context ctx,
             Collector<EnrichedEvent> out) throws Exception {
         this.eventBuffer.add(value);
-        System.out.println("Checking timestamps");
-        // System.out.println(value.getBaseEvent().getIotMessage().getPayload().getTimestampUtc().toEpochMilli()-ctx.timestamp());
-        System.out.println(ctx.timestamp()-ctx.timerService().currentWatermark());
         ctx.timerService().registerEventTimeTimer(ctx.timerService().currentWatermark()+100);
     }
 
