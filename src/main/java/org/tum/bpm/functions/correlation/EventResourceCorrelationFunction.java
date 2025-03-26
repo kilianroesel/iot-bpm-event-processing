@@ -187,6 +187,7 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
                             ctx.output(RESOURCE_OUTPUT_TAG, resource);
                         }
                     }
+                    break;
                 case "CONSUME":
                     if (correlationRule.getQuantity() != null) {
                         for (int i = 0; i < correlationRule.getQuantity(); i++) {
