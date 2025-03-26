@@ -12,16 +12,14 @@ import lombok.Data;
 @AllArgsConstructor
 public class EnrichedEvent {
 
-    private BaseEvent event;
+    private AbstractedEvent event;
     private List<OcelAttribute> enrichment;
-    private Instant eventAbstractionTime;
     private Instant eventEnrichmentTime;
 
 
-    public EnrichedEvent(BaseEvent event, List<OcelAttribute> enrichment, Instant eventAbstractionTime) {
+    public EnrichedEvent(AbstractedEvent event, List<OcelAttribute> enrichment) {
         this.event = event;
         this.enrichment = enrichment;
-        this.eventAbstractionTime = eventAbstractionTime;
         this.eventEnrichmentTime = Instant.now();
     }
 }

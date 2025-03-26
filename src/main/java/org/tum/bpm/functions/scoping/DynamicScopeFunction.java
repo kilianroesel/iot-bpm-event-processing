@@ -9,7 +9,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.streaming.api.functions.co.BroadcastProcessFunction;
 import org.apache.flink.util.Collector;
 import org.apache.flink.util.OutputTag;
-import org.tum.bpm.schemas.Scoped;
+import org.tum.bpm.schemas.ScopedMeasurement;
 import org.tum.bpm.schemas.measurements.IoTMessageSchema;
 import org.tum.bpm.schemas.rules.EventScopingRule;
 import org.tum.bpm.schemas.rules.RuleControl;
@@ -17,7 +17,7 @@ import org.tum.bpm.schemas.rules.RuleControl;
 import java.util.Map;
 
 public class DynamicScopeFunction
-        extends BroadcastProcessFunction<IoTMessageSchema, RuleControl<EventScopingRule>, Scoped<IoTMessageSchema, String>> {
+        extends BroadcastProcessFunction<IoTMessageSchema, RuleControl<EventScopingRule>, ScopedMeasurement> {
 
     // Output Tag for Measurements that do not have a registered scope
     public static final OutputTag<IoTMessageSchema> NO_SCOPE_MEASUREMENT_OUTPUT_TAG = new OutputTag<IoTMessageSchema>(
@@ -33,8 +33,8 @@ public class DynamicScopeFunction
 
     @Override
     public void processElement(IoTMessageSchema measurement,
-            BroadcastProcessFunction<IoTMessageSchema, RuleControl<EventScopingRule>, Scoped<IoTMessageSchema, String>>.ReadOnlyContext ctx,
-            Collector<Scoped<IoTMessageSchema, String>> out) throws Exception {
+            BroadcastProcessFunction<IoTMessageSchema, RuleControl<EventScopingRule>, ScopedMeasurement>.ReadOnlyContext ctx,
+            Collector<ScopedMeasurement> out) throws Exception {
 
         ReadOnlyBroadcastState<String, EventScopingRule> rulesState = ctx
                 .getBroadcastState(SCOPE_RULES_BROADCAST_STATE_DESCRIPTOR);
@@ -47,14 +47,14 @@ public class DynamicScopeFunction
         if (rule == null) {
             ctx.output(NO_SCOPE_MEASUREMENT_OUTPUT_TAG, measurement);
         } else {
-            out.collect(new Scoped<IoTMessageSchema, String>(measurement, rule.getRuleId()));
+            out.collect(new ScopedMeasurement(measurement, rule.getRuleId(), measurement.getIngestionTime()));
         }
     }
 
     @Override
     public void processBroadcastElement(RuleControl<EventScopingRule> ruleControl,
-            BroadcastProcessFunction<IoTMessageSchema, RuleControl<EventScopingRule>, Scoped<IoTMessageSchema, String>>.Context ctx,
-            Collector<Scoped<IoTMessageSchema, String>> out) throws Exception {
+            BroadcastProcessFunction<IoTMessageSchema, RuleControl<EventScopingRule>, ScopedMeasurement>.Context ctx,
+            Collector<ScopedMeasurement> out) throws Exception {
 
                 EventScopingRule rule = ruleControl.getRule();
         BroadcastState<String, EventScopingRule> broadcastState = ctx

@@ -30,7 +30,7 @@ public class IoTMessageSchema implements Comparable<IoTMessageSchema> {
     @JsonProperty("correlationId")
     private String correlationId;
 
-    @JsonProperty("messageTs")
+    @JsonProperty("messageTs")  // When was the message created on the edge
     private Instant messageTs;
     
     @JsonProperty("payload")

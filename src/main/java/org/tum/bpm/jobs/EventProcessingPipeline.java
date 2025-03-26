@@ -15,11 +15,11 @@ import org.tum.bpm.functions.scoping.DynamicScopeFunction;
 import org.tum.bpm.functions.serialization.OcelEventSerialization;
 import org.tum.bpm.functions.serialization.OcelObjectSerialization;
 import org.tum.bpm.schemas.EnrichedEvent;
-import org.tum.bpm.schemas.BaseEvent;
+import org.tum.bpm.schemas.AbstractedEvent;
 import org.tum.bpm.schemas.CorrelatedEvent;
 import org.tum.bpm.schemas.EquipmentListEvent;
 import org.tum.bpm.schemas.Resource;
-import org.tum.bpm.schemas.Scoped;
+import org.tum.bpm.schemas.ScopedMeasurement;
 import org.tum.bpm.schemas.debezium.MongoChangeStreamMessage;
 import org.tum.bpm.schemas.measurements.IoTMessageSchema;
 import org.tum.bpm.schemas.ocel.OcelEvent;
@@ -74,7 +74,7 @@ public class EventProcessingPipeline {
                 .broadcast(OcelObjectSerialization.RESOURCE_NAME_RULE_BROADCAST_STATE_DESCRIPTOR);
 
         // Connect Scoping rule Stream and assign a Scope to each IoTMeasurement
-        DataStream<Scoped<IoTMessageSchema, String>> scopedIoTMessageStream = iotMessageStream
+        DataStream<ScopedMeasurement> scopedIoTMessageStream = iotMessageStream
                 .connect(eventScopingRuleBroadcast)
                 .process(new DynamicScopeFunction())
                 .name("Scoped Stream");
@@ -85,10 +85,10 @@ public class EventProcessingPipeline {
         // identifiable and interpretable
         // 2. The dynamic event abstraction function creates the event, based on the
         // abstraction rule stream.
-        DataStream<BaseEvent> events = scopedIoTMessageStream
+        DataStream<AbstractedEvent> events = scopedIoTMessageStream
                 .keyBy(message -> message.getScope()
-                        + message.getWrapped().getPayload().getEdgeDeviceId()
-                        + message.getWrapped().getPayload().getVarName())
+                        + message.getIotMessage().getPayload().getEdgeDeviceId()
+                        + message.getIotMessage().getPayload().getVarName())
                 .connect(eventAbstractionRuleBroadcast)
                 .process(new DynamicEventAbstractionFunction())
                 .name("Event Stream");

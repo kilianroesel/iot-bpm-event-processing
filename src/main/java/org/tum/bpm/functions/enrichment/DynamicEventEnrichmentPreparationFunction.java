@@ -12,12 +12,12 @@ import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.streaming.api.functions.co.BroadcastProcessFunction;
 import org.apache.flink.util.Collector;
-import org.tum.bpm.schemas.BaseEvent;
+import org.tum.bpm.schemas.AbstractedEvent;
 import org.tum.bpm.schemas.EquipmentListEvent;
 import org.tum.bpm.schemas.rules.EventEnrichmentRule;
 import org.tum.bpm.schemas.rules.RuleControl;
 
-public class DynamicEventEnrichmentPreparationFunction extends BroadcastProcessFunction<BaseEvent, RuleControl<EventEnrichmentRule>, EquipmentListEvent> {
+public class DynamicEventEnrichmentPreparationFunction extends BroadcastProcessFunction<AbstractedEvent, RuleControl<EventEnrichmentRule>, EquipmentListEvent> {
 
     // Broadcast state
     public static final MapStateDescriptor<String, List<EventEnrichmentRule>> ENRICHMENT_RULES_BROADCAST_STATE_DESCRIPTOR = new MapStateDescriptor<String, List<EventEnrichmentRule>>(
@@ -27,8 +27,8 @@ public class DynamicEventEnrichmentPreparationFunction extends BroadcastProcessF
             }));
 
     @Override
-    public void processElement(BaseEvent baseEvent,
-            BroadcastProcessFunction<BaseEvent, RuleControl<EventEnrichmentRule>, EquipmentListEvent>.ReadOnlyContext ctx,
+    public void processElement(AbstractedEvent baseEvent,
+            BroadcastProcessFunction<AbstractedEvent, RuleControl<EventEnrichmentRule>, EquipmentListEvent>.ReadOnlyContext ctx,
             Collector<EquipmentListEvent> out) throws Exception {
         ReadOnlyBroadcastState<String, List<EventEnrichmentRule>> enrichmentRuleState = ctx
                 .getBroadcastState(ENRICHMENT_RULES_BROADCAST_STATE_DESCRIPTOR);
@@ -41,7 +41,7 @@ public class DynamicEventEnrichmentPreparationFunction extends BroadcastProcessF
 
     @Override
     public void processBroadcastElement(RuleControl<EventEnrichmentRule> ruleControl,
-            BroadcastProcessFunction<BaseEvent, RuleControl<EventEnrichmentRule>, EquipmentListEvent>.Context ctx,
+            BroadcastProcessFunction<AbstractedEvent, RuleControl<EventEnrichmentRule>, EquipmentListEvent>.Context ctx,
             Collector<EquipmentListEvent> out) throws Exception {
 
         EventEnrichmentRule rule = ruleControl.getRule();

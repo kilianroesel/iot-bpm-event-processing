@@ -100,7 +100,7 @@ public class EventBatchEnrichmentFunction
                     }
                 }
             }
-            out.collect(new EnrichedEvent(event.getBaseEvent(), enrichment, event.getBaseEvent().getEventAbstractionTime()));
+            out.collect(new EnrichedEvent(event.getBaseEvent(), enrichment));
         }
         this.eventBuffer.clear();
         this.eventBuffer.update(remainingEvents);

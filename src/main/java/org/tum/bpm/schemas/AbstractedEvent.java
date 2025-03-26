@@ -10,15 +10,17 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class BaseEvent {
+public class AbstractedEvent {
     // The rule that triggered the event
     private EventAbstractionRule rule;
     // The underlying messsage that the event was evaluated on
     private IoTMessageSchema iotMessage;
-    private Instant eventAbstractionTime;
+    private Instant scopeTime;
+    private Instant abstractionTime;
 
-    public BaseEvent(EventAbstractionRule rule, IoTMessageSchema iotMessage) {
-        this.eventAbstractionTime = Instant.now();
+    public AbstractedEvent(EventAbstractionRule rule, IoTMessageSchema iotMessage, Instant scopeTime) {
+        this.abstractionTime = Instant.now();
+        this.scopeTime = scopeTime;
         this.iotMessage = iotMessage;
         this.rule = rule;
     }

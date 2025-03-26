@@ -18,12 +18,12 @@ import java.util.ArrayList;
 
 import org.tum.bpm.schemas.rules.EventAbstractionRule;
 import org.tum.bpm.schemas.rules.RuleControl;
-import org.tum.bpm.schemas.BaseEvent;
-import org.tum.bpm.schemas.Scoped;
+import org.tum.bpm.schemas.AbstractedEvent;
+import org.tum.bpm.schemas.ScopedMeasurement;
 import org.tum.bpm.schemas.measurements.IoTMessageSchema;
 
 public class DynamicEventAbstractionFunction extends
-        KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, RuleControl<EventAbstractionRule>, BaseEvent> {
+        KeyedBroadcastProcessFunction<String, ScopedMeasurement, RuleControl<EventAbstractionRule>, AbstractedEvent> {
 
     private transient ValueState<IoTMessageSchema> lastMeasurementState;
 
@@ -46,28 +46,28 @@ public class DynamicEventAbstractionFunction extends
     }
 
     @Override
-    public void processElement(Scoped<IoTMessageSchema, String> measurement,
-            KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, RuleControl<EventAbstractionRule>, BaseEvent>.ReadOnlyContext ctx,
-            Collector<BaseEvent> out) throws Exception {
+    public void processElement(ScopedMeasurement measurement,
+            KeyedBroadcastProcessFunction<String, ScopedMeasurement, RuleControl<EventAbstractionRule>, AbstractedEvent>.ReadOnlyContext ctx,
+            Collector<AbstractedEvent> out) throws Exception {
 
         ReadOnlyBroadcastState<String, List<EventAbstractionRule>> abstractionRuleState = ctx
                 .getBroadcastState(ABSTRACTION_RULES_BROADCAST_STATE_DESCRIPTOR);
         List<EventAbstractionRule> rules = abstractionRuleState
-                .get(measurement.getScope() + measurement.getWrapped().getPayload().getVarName());
+                .get(measurement.getScope() + measurement.getIotMessage().getPayload().getVarName());
 
         if (rules != null) {
             for (EventAbstractionRule rule : rules) {
-                if (this.evaluateRule(rule, measurement.getWrapped()))
-                    out.collect(new BaseEvent(rule, measurement.getWrapped()));
+                if (this.evaluateRule(rule, measurement.getIotMessage()))
+                    out.collect(new AbstractedEvent(rule, measurement.getIotMessage(), measurement.getScopeTime()));
             }
         }
-        this.lastMeasurementState.update(measurement.getWrapped());
+        this.lastMeasurementState.update(measurement.getIotMessage());
     }
 
     @Override
     public void processBroadcastElement(RuleControl<EventAbstractionRule> ruleControl,
-            KeyedBroadcastProcessFunction<String, Scoped<IoTMessageSchema, String>, RuleControl<EventAbstractionRule>, BaseEvent>.Context ctx,
-            Collector<BaseEvent> out) throws Exception {
+            KeyedBroadcastProcessFunction<String, ScopedMeasurement, RuleControl<EventAbstractionRule>, AbstractedEvent>.Context ctx,
+            Collector<AbstractedEvent> out) throws Exception {
 
         EventAbstractionRule rule = ruleControl.getRule();
         BroadcastState<String, List<EventAbstractionRule>> broadcastState = ctx

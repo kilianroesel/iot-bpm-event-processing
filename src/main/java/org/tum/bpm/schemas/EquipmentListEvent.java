@@ -10,6 +10,6 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class EquipmentListEvent {
-    private BaseEvent baseEvent;
+    private AbstractedEvent baseEvent;
     private List<EventEnrichmentRule> enrichmentRules;
 }
