@@ -35,11 +35,11 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
             TypeInformation.of(new TypeHint<Queue<Resource>>() {
             }));
     // Maps equipmentPath to view to view state
-    private transient MapState<String, Map<String, Resource>> viewState;
-    private MapStateDescriptor<String, Map<String, Resource>> viewStateDescriptor = new MapStateDescriptor<>(
+    private transient MapState<String, Map<String, String>> viewState;
+    private MapStateDescriptor<String, Map<String, String>> viewStateDescriptor = new MapStateDescriptor<>(
             "viewState",
             BasicTypeInfo.STRING_TYPE_INFO,
-            TypeInformation.of(new TypeHint<Map<String, Resource>>() {
+            TypeInformation.of(new TypeHint<Map<String, String>>() {
             }));
 
     public static final OutputTag<Resource> RESOURCE_OUTPUT_TAG = new OutputTag<Resource>(
@@ -78,14 +78,15 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
 
         // Update view state
         if (viewId != null) {
-            Map<String, Resource> views = this.viewState.get(equipmentPath);
+            Map<String, String> views = this.viewState.get(equipmentPath);
             if (views == null) {
                 views = new HashMap<>();
             }
             String resourceId = UUID.randomUUID().toString();
-            Resource viewCorrelation = new Resource(resourceId, viewId + event.getEvent().getRule().getEventName(),
-                    event.getEnrichment(), Instant.MAX);
-            views.put(viewId, viewCorrelation);
+            // Resource viewCorrelation = new Resource(resourceId, viewId + event.getEvent().getRule().getEventName(),
+            //         event.getEnrichment(), Instant.MAX);
+            String newViewState = event.getEvent().getRule().getEventName();
+            views.put(viewId, newViewState);
             this.viewState.put(equipmentPath, views);
         }
         // Correlate views along equipmentPath
@@ -93,10 +94,10 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
 
         for (int i = 1; i < equipment.length; i++) {
             String currentPath = String.join(",", java.util.Arrays.copyOfRange(equipment, 0, i + 1)) + ",";
-            Map<String, Resource> views = this.viewState.get(currentPath);
+            Map<String, String> views = this.viewState.get(currentPath);
             if (views != null) {
-                for (Resource resource : views.values()) {
-                    correlations.add(new OcelRelationship(resource.getResourceId(), resource.getResourceModelId()));
+                for (Map.Entry<String,String> view : views.entrySet()) {
+                    correlations.add(new OcelRelationship(view.getValue(), view.getKey()));
                 }
             }
         }

@@ -66,7 +66,7 @@ public class EventBatchEnrichmentFunction
             fieldBuffer = new TreeSet<IoTMessageSchema>();
         fieldBuffer.add(iotMessage);
         if (fieldBuffer.size() > 10) {
-            fieldBuffer.pollFirst(); // Remove to keep at most the last 5 measurements
+            fieldBuffer.pollFirst(); // Remove to keep at most the last 10 measurements
         }
         this.measurementBuffer.put(iotMessage.getPayload().getVarName(), fieldBuffer);
     }
@@ -89,7 +89,6 @@ public class EventBatchEnrichmentFunction
         // enrichment rules
         for (EquipmentListEvent event : this.eventBuffer.get()) {
             List<OcelAttribute> enrichment = new ArrayList<OcelAttribute>();
-            // Map<String, String> enrichment = new HashMap<>();
             if (event.getEnrichmentRules() != null) {
                 for (EventEnrichmentRule eventEnrichmentRule : event.getEnrichmentRules()) {
                     TreeSet<IoTMessageSchema> fieldBuffer = this.measurementBuffer.get(eventEnrichmentRule.getField());
