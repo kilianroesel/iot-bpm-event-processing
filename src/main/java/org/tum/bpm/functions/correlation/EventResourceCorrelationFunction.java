@@ -82,9 +82,6 @@ public class EventResourceCorrelationFunction extends KeyedProcessFunction<Strin
             if (views == null) {
                 views = new HashMap<>();
             }
-            String resourceId = UUID.randomUUID().toString();
-            // Resource viewCorrelation = new Resource(resourceId, viewId + event.getEvent().getRule().getEventName(),
-            //         event.getEnrichment(), Instant.MAX);
             String newViewState = event.getEvent().getRule().getEventName();
             views.put(viewId, newViewState);
             this.viewState.put(equipmentPath, views);
